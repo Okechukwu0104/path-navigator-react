@@ -1,3 +1,4 @@
+
 import React, { useRef, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 
@@ -51,78 +52,158 @@ const MapComponent: React.FC<MapComponentProps> = ({
 
     // Draw background based on map view
     if (mapView === 'satellite') {
-      // Satellite view background
-      const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
-      gradient.addColorStop(0, '#2a4a3a');
-      gradient.addColorStop(0.5, '#3d6b5a');
-      gradient.addColorStop(1, '#2a3d2e');
+      // Satellite view with terrain-like colors
+      const gradient = ctx.createRadialGradient(canvas.width/2, canvas.height/2, 0, canvas.width/2, canvas.height/2, canvas.width);
+      gradient.addColorStop(0, '#4a5d23');
+      gradient.addColorStop(0.3, '#5c7a2e');
+      gradient.addColorStop(0.6, '#3d5c1f');
+      gradient.addColorStop(1, '#2d4416');
       ctx.fillStyle = gradient;
     } else {
-      // Clean map background like in Figma
-      ctx.fillStyle = '#f8fafb';
+      // Google Maps style background
+      ctx.fillStyle = '#f2f1ec';
     }
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // Draw subtle grid lines for map effect
-    ctx.strokeStyle = mapView === 'satellite' ? '#4a6b5a' : '#e8f0f2';
-    ctx.lineWidth = 1;
-    
-    // Vertical lines
-    for (let x = 0; x < canvas.width; x += 40) {
+    // Add map-like features for roadmap view
+    if (mapView === 'roadmap') {
+      // Draw parks/green areas
+      ctx.fillStyle = '#c8e6c9';
+      ctx.fillRect(50, 80, 120, 80);
+      ctx.fillRect(280, 150, 100, 70);
+      ctx.fillRect(420, 60, 90, 90);
+      
+      // Draw water bodies
+      ctx.fillStyle = '#81d4fa';
       ctx.beginPath();
-      ctx.moveTo(x, 0);
-      ctx.lineTo(x, canvas.height);
-      ctx.stroke();
+      ctx.ellipse(350, 300, 80, 40, 0, 0, 2 * Math.PI);
+      ctx.fill();
+      
+      // Draw buildings/urban areas
+      ctx.fillStyle = '#eeeeee';
+      for (let i = 0; i < 15; i++) {
+        const x = Math.random() * canvas.width;
+        const y = Math.random() * canvas.height;
+        const width = 15 + Math.random() * 25;
+        const height = 15 + Math.random() * 25;
+        ctx.fillRect(x, y, width, height);
+      }
     }
+
+    // Draw road network
+    ctx.strokeStyle = mapView === 'satellite' ? '#8a9b5c' : '#ffffff';
+    ctx.lineWidth = mapView === 'satellite' ? 3 : 8;
+    ctx.lineCap = 'round';
     
-    // Horizontal lines
-    for (let y = 0; y < canvas.height; y += 40) {
+    // Main roads - horizontal
+    ctx.beginPath();
+    ctx.moveTo(0, canvas.height * 0.3);
+    ctx.lineTo(canvas.width, canvas.height * 0.3);
+    ctx.stroke();
+    
+    ctx.beginPath();
+    ctx.moveTo(0, canvas.height * 0.7);
+    ctx.lineTo(canvas.width, canvas.height * 0.7);
+    ctx.stroke();
+    
+    // Main roads - vertical
+    ctx.beginPath();
+    ctx.moveTo(canvas.width * 0.25, 0);
+    ctx.lineTo(canvas.width * 0.25, canvas.height);
+    ctx.stroke();
+    
+    ctx.beginPath();
+    ctx.moveTo(canvas.width * 0.75, 0);
+    ctx.lineTo(canvas.width * 0.75, canvas.height);
+    ctx.stroke();
+    
+    // Secondary roads
+    ctx.lineWidth = mapView === 'satellite' ? 2 : 4;
+    ctx.strokeStyle = mapView === 'satellite' ? '#6b7c47' : '#f8f8f8';
+    
+    // Diagonal roads
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.lineTo(canvas.width * 0.6, canvas.height * 0.8);
+    ctx.stroke();
+    
+    ctx.beginPath();
+    ctx.moveTo(canvas.width * 0.4, 0);
+    ctx.lineTo(canvas.width, canvas.height * 0.6);
+    ctx.stroke();
+    
+    // Small connector roads
+    for (let i = 0; i < 8; i++) {
       ctx.beginPath();
-      ctx.moveTo(0, y);
-      ctx.lineTo(canvas.width, y);
+      const startX = Math.random() * canvas.width;
+      const startY = Math.random() * canvas.height;
+      const endX = startX + (Math.random() - 0.5) * 100;
+      const endY = startY + (Math.random() - 0.5) * 100;
+      ctx.moveTo(startX, startY);
+      ctx.lineTo(endX, endY);
       ctx.stroke();
     }
 
-    // Convert lat/lng to canvas coordinates (simplified projection)
+    // Add road markings for roadmap view
+    if (mapView === 'roadmap') {
+      ctx.strokeStyle = '#ffd54f';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([10, 10]);
+      
+      // Center lines on main roads
+      ctx.beginPath();
+      ctx.moveTo(0, canvas.height * 0.3);
+      ctx.lineTo(canvas.width, canvas.height * 0.3);
+      ctx.stroke();
+      
+      ctx.beginPath();
+      ctx.moveTo(canvas.width * 0.25, 0);
+      ctx.lineTo(canvas.width * 0.25, canvas.height);
+      ctx.stroke();
+      
+      ctx.setLineDash([]);
+    }
+
+    // Convert lat/lng to canvas coordinates
     const latToY = (lat: number) => {
       const centerLat = currentLocation.lat;
-      const range = 0.01; // Zoom level
+      const range = 0.02;
       return canvas.height / 2 - ((lat - centerLat) / range) * (canvas.height / 2);
     };
 
     const lngToX = (lng: number) => {
       const centerLng = currentLocation.lng;
-      const range = 0.01; // Zoom level
+      const range = 0.02;
       return canvas.width / 2 + ((lng - centerLng) / range) * (canvas.width / 2);
     };
 
-    // Draw roads/streets
-    if (mapView === 'roadmap') {
-      ctx.strokeStyle = '#ffffff';
-      ctx.lineWidth = 4;
-      
-      // Main streets
-      for (let i = 0; i < 5; i++) {
-        ctx.beginPath();
-        ctx.moveTo(0, (canvas.height / 5) * i + canvas.height / 10);
-        ctx.lineTo(canvas.width, (canvas.height / 5) * i + canvas.height / 10);
-        ctx.stroke();
-        
-        ctx.beginPath();
-        ctx.moveTo((canvas.width / 5) * i + canvas.width / 10, 0);
-        ctx.lineTo((canvas.width / 5) * i + canvas.width / 10, canvas.height);
-        ctx.stroke();
-      }
-    }
-
-    // Draw route path with modern styling
+    // Draw route path
     if (route.length > 0) {
-      ctx.strokeStyle = '#10b981'; // Green color like in Figma
-      ctx.lineWidth = 8;
+      ctx.strokeStyle = '#1976d2';
+      ctx.lineWidth = 6;
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
       ctx.setLineDash([]);
       
+      // Route shadow for depth
+      ctx.strokeStyle = 'rgba(25, 118, 210, 0.3)';
+      ctx.lineWidth = 10;
+      ctx.beginPath();
+      route.forEach((step, index) => {
+        const x = lngToX(step.coordinates.lng);
+        const y = latToY(step.coordinates.lat);
+        
+        if (index === 0) {
+          ctx.moveTo(x, y);
+        } else {
+          ctx.lineTo(x, y);
+        }
+      });
+      ctx.stroke();
+      
+      // Main route line
+      ctx.strokeStyle = '#1976d2';
+      ctx.lineWidth = 6;
       ctx.beginPath();
       route.forEach((step, index) => {
         const x = lngToX(step.coordinates.lng);
@@ -136,92 +217,120 @@ const MapComponent: React.FC<MapComponentProps> = ({
       });
       ctx.stroke();
 
-      // Draw route points
+      // Route waypoints
       route.forEach((step, index) => {
         const x = lngToX(step.coordinates.lng);
         const y = latToY(step.coordinates.lat);
         
-        // Point circle
+        // Waypoint circle
         ctx.fillStyle = '#ffffff';
         ctx.beginPath();
-        ctx.arc(x, y, 8, 0, 2 * Math.PI);
+        ctx.arc(x, y, 6, 0, 2 * Math.PI);
         ctx.fill();
         
-        ctx.fillStyle = '#10b981';
+        ctx.fillStyle = '#1976d2';
         ctx.beginPath();
-        ctx.arc(x, y, 5, 0, 2 * Math.PI);
+        ctx.arc(x, y, 3, 0, 2 * Math.PI);
         ctx.fill();
       });
 
-      // Highlight current step if navigating
+      // Highlight current step
       if (isNavigating && currentStepIndex < route.length) {
         const currentStep = route[currentStepIndex];
         const x = lngToX(currentStep.coordinates.lng);
         const y = latToY(currentStep.coordinates.lat);
         
-        // Animated pulse for current step
-        ctx.fillStyle = '#ef4444';
+        // Animated current position
+        ctx.fillStyle = '#ff5722';
         ctx.beginPath();
-        ctx.arc(x, y, 15, 0, 2 * Math.PI);
+        ctx.arc(x, y, 12, 0, 2 * Math.PI);
         ctx.fill();
         
         ctx.fillStyle = '#ffffff';
         ctx.beginPath();
-        ctx.arc(x, y, 8, 0, 2 * Math.PI);
+        ctx.arc(x, y, 6, 0, 2 * Math.PI);
         ctx.fill();
       }
     }
 
-    // Draw current location with modern styling
+    // Draw current location
     const currentX = lngToX(currentLocation.lng);
     const currentY = latToY(currentLocation.lat);
     
-    // Location circle with shadow effect
+    // Location shadow
+    ctx.fillStyle = 'rgba(33, 150, 243, 0.3)';
+    ctx.beginPath();
+    ctx.arc(currentX + 1, currentY + 1, 14, 0, 2 * Math.PI);
+    ctx.fill();
+    
+    // Location marker
     ctx.fillStyle = '#ffffff';
     ctx.beginPath();
     ctx.arc(currentX, currentY, 12, 0, 2 * Math.PI);
     ctx.fill();
     
-    ctx.fillStyle = '#3b82f6';
+    ctx.fillStyle = '#2196f3';
     ctx.beginPath();
     ctx.arc(currentX, currentY, 8, 0, 2 * Math.PI);
     ctx.fill();
+    
+    // Location pulse effect
+    ctx.strokeStyle = 'rgba(33, 150, 243, 0.5)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(currentX, currentY, 16, 0, 2 * Math.PI);
+    ctx.stroke();
 
-    // Draw destination with modern styling
+    // Draw destination
     if (destination) {
       const destX = lngToX(destination.lng);
       const destY = latToY(destination.lat);
       
-      // Destination pin
-      ctx.fillStyle = '#ffffff';
+      // Destination shadow
+      ctx.fillStyle = 'rgba(244, 67, 54, 0.3)';
       ctx.beginPath();
-      ctx.arc(destX, destY, 15, 0, 2 * Math.PI);
+      ctx.arc(destX + 1, destY + 1, 16, 0, 2 * Math.PI);
       ctx.fill();
       
-      ctx.fillStyle = '#ef4444';
+      // Destination marker (pin style)
+      ctx.fillStyle = '#f44336';
       ctx.beginPath();
-      ctx.arc(destX, destY, 10, 0, 2 * Math.PI);
+      ctx.arc(destX, destY, 12, 0, 2 * Math.PI);
+      ctx.fill();
+      
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(destX, destY, 6, 0, 2 * Math.PI);
+      ctx.fill();
+      
+      // Pin pointer
+      ctx.fillStyle = '#f44336';
+      ctx.beginPath();
+      ctx.moveTo(destX, destY + 12);
+      ctx.lineTo(destX - 6, destY + 24);
+      ctx.lineTo(destX + 6, destY + 24);
+      ctx.closePath();
       ctx.fill();
     }
 
   }, [currentLocation, destination, route, currentStepIndex, isNavigating, mapView]);
 
   return (
-    <div ref={mapRef} className="w-full h-full relative bg-gray-50">
+    <div ref={mapRef} className="w-full h-full relative bg-gray-100">
       <canvas
         ref={canvasRef}
         className="w-full h-full"
         style={{ width: '100%', height: '100%' }}
       />
       
-      {/* Modern Map Controls */}
+      {/* Map Controls */}
       <div className="absolute bottom-6 right-6">
         <Card className="p-2 bg-white shadow-lg border-0 rounded-xl">
           <div className="flex flex-col space-y-2">
-            <button className="w-10 h-10 bg-white hover:bg-gray-50 rounded-lg flex items-center justify-center text-lg font-bold transition-colors shadow-sm">
+            <button className="w-10 h-10 bg-white hover:bg-gray-50 rounded-lg flex items-center justify-center text-lg font-bold transition-colors shadow-sm border border-gray-200">
               +
             </button>
-            <button className="w-10 h-10 bg-white hover:bg-gray-50 rounded-lg flex items-center justify-center text-lg font-bold transition-colors shadow-sm">
+            <button className="w-10 h-10 bg-white hover:bg-gray-50 rounded-lg flex items-center justify-center text-lg font-bold transition-colors shadow-sm border border-gray-200">
               −
             </button>
           </div>
