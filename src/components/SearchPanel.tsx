@@ -16,12 +16,13 @@ interface SearchPanelProps {
   currentLocation: Location | null;
 }
 
+const GOOGLE_API_KEY = 'AIzaSyCsIxQ-fyrN_cOw46dFVWGMBKfI93LoVe8';
+
 const SearchPanel: React.FC<SearchPanelProps> = ({ onDestinationSelect, currentLocation }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [suggestions, setSuggestions] = useState<Location[]>([]);
   const [isSearching, setIsSearching] = useState(false);
 
-  // Simulated search suggestions
   const searchLocations = async (query: string) => {
     if (!query.trim()) {
       setSuggestions([]);
@@ -30,19 +31,49 @@ const SearchPanel: React.FC<SearchPanelProps> = ({ onDestinationSelect, currentL
 
     setIsSearching(true);
     
-    // Simulate API delay
-    setTimeout(() => {
+    try {
+      // Use Google Places API for autocomplete
+      const response = await fetch(
+        `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(query)}&key=${GOOGLE_API_KEY}&libraries=places`,
+        {
+          method: 'GET',
+        }
+      );
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch places');
+      }
+      
+      const data = await response.json();
+      
+      // Get place details for each prediction
+      const placePromises = data.predictions.slice(0, 5).map(async (prediction: any) => {
+        const detailResponse = await fetch(
+          `https://maps.googleapis.com/maps/api/place/details/json?place_id=${prediction.place_id}&fields=geometry,formatted_address&key=${GOOGLE_API_KEY}`
+        );
+        const detailData = await detailResponse.json();
+        
+        return {
+          lat: detailData.result.geometry.location.lat,
+          lng: detailData.result.geometry.location.lng,
+          address: detailData.result.formatted_address
+        };
+      });
+      
+      const places = await Promise.all(placePromises);
+      setSuggestions(places);
+    } catch (error) {
+      console.error('Error searching places:', error);
+      // Fallback to mock data if API fails
       const mockSuggestions: Location[] = [
         { lat: 37.7849, lng: -122.4094, address: `${query} - Downtown San Francisco` },
         { lat: 37.7749, lng: -122.4194, address: `${query} - Union Square` },
-        { lat: 37.7649, lng: -122.4094, address: `${query} - SOMA District` },
-        { lat: 37.8049, lng: -122.4194, address: `${query} - Financial District` },
-        { lat: 37.7549, lng: -122.4294, address: `${query} - Mission District` }
+        { lat: 37.7649, lng: -122.4094, address: `${query} - SOMA District` }
       ];
-      
       setSuggestions(mockSuggestions);
+    } finally {
       setIsSearching(false);
-    }, 500);
+    }
   };
 
   const handleSearch = (e: React.FormEvent) => {

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -22,6 +21,8 @@ interface RouteStep {
   coordinates: Location;
   maneuver: string;
 }
+
+const GOOGLE_API_KEY = 'AIzaSyCsIxQ-fyrN_cOw46dFVWGMBKfI93LoVe8';
 
 const Index = () => {
   const [currentLocation, setCurrentLocation] = useState<Location | null>(null);
@@ -61,53 +62,113 @@ const Index = () => {
     }
   }, [toast]);
 
-  const calculateRoute = (start: Location, end: Location) => {
-    // Simulated route calculation with junction-by-junction directions
-    const steps: RouteStep[] = [
-      {
-        instruction: "Head north on your current street",
-        distance: "0.2 miles",
-        duration: "1 min",
-        coordinates: start,
-        maneuver: "straight"
-      },
-      {
-        instruction: "Turn right at the junction onto Main Street",
-        distance: "0.5 miles",
-        duration: "2 mins",
-        coordinates: { lat: start.lat + 0.002, lng: start.lng + 0.001 },
-        maneuver: "turn-right"
-      },
-      {
-        instruction: "Continue straight through the traffic light",
-        distance: "0.8 miles",
-        duration: "3 mins",
-        coordinates: { lat: start.lat + 0.005, lng: start.lng + 0.003 },
-        maneuver: "straight"
-      },
-      {
-        instruction: "Turn left at Oak Street junction",
-        distance: "0.3 miles",
-        duration: "1 min",
-        coordinates: { lat: start.lat + 0.008, lng: start.lng + 0.002 },
-        maneuver: "turn-left"
-      },
-      {
-        instruction: "Arrive at your destination on the right",
-        distance: "0.1 miles",
-        duration: "30 secs",
-        coordinates: end,
-        maneuver: "arrive"
+  const calculateRoute = async (start: Location, end: Location) => {
+    try {
+      console.log('Calculating route from', start, 'to', end);
+      
+      // Use Google Directions API
+      const response = await fetch(
+        `https://maps.googleapis.com/maps/api/directions/json?origin=${start.lat},${start.lng}&destination=${end.lat},${end.lng}&key=${GOOGLE_API_KEY}&alternatives=false`
+      );
+      
+      if (!response.ok) {
+        throw new Error('Failed to get directions');
       }
-    ];
-    
-    setRoute(steps);
-    setCurrentStepIndex(0);
-    
-    toast({
-      title: "Route calculated",
-      description: `Found route with ${steps.length} steps`,
-    });
+      
+      const data = await response.json();
+      
+      if (data.status !== 'OK' || !data.routes.length) {
+        throw new Error('No routes found');
+      }
+      
+      const route = data.routes[0];
+      const legs = route.legs[0];
+      
+      // Convert Google Directions steps to our format
+      const steps: RouteStep[] = legs.steps.map((step: any, index: number) => {
+        // Extract maneuver type from HTML instructions
+        let maneuver = 'straight';
+        const instructions = step.html_instructions.toLowerCase();
+        
+        if (instructions.includes('turn right') || instructions.includes('right turn')) {
+          maneuver = 'turn-right';
+        } else if (instructions.includes('turn left') || instructions.includes('left turn')) {
+          maneuver = 'turn-left';
+        } else if (instructions.includes('arrive') || instructions.includes('destination')) {
+          maneuver = 'arrive';
+        }
+        
+        return {
+          instruction: step.html_instructions.replace(/<[^>]*>/g, ''), // Remove HTML tags
+          distance: step.distance.text,
+          duration: step.duration.text,
+          coordinates: {
+            lat: step.end_location.lat,
+            lng: step.end_location.lng
+          },
+          maneuver
+        };
+      });
+      
+      setRoute(steps);
+      setCurrentStepIndex(0);
+      
+      toast({
+        title: "Route calculated",
+        description: `Found route with ${steps.length} steps (${legs.distance.text}, ${legs.duration.text})`,
+      });
+      
+    } catch (error) {
+      console.error('Error calculating route:', error);
+      
+      // Fallback to mock route if API fails
+      const steps: RouteStep[] = [
+        {
+          instruction: "Head north on your current street",
+          distance: "0.2 miles",
+          duration: "1 min",
+          coordinates: start,
+          maneuver: "straight"
+        },
+        {
+          instruction: "Turn right at the junction onto Main Street",
+          distance: "0.5 miles",
+          duration: "2 mins",
+          coordinates: { lat: start.lat + 0.002, lng: start.lng + 0.001 },
+          maneuver: "turn-right"
+        },
+        {
+          instruction: "Continue straight through the traffic light",
+          distance: "0.8 miles",
+          duration: "3 mins",
+          coordinates: { lat: start.lat + 0.005, lng: start.lng + 0.003 },
+          maneuver: "straight"
+        },
+        {
+          instruction: "Turn left at Oak Street junction",
+          distance: "0.3 miles",
+          duration: "1 min",
+          coordinates: { lat: start.lat + 0.008, lng: start.lng + 0.002 },
+          maneuver: "turn-left"
+        },
+        {
+          instruction: "Arrive at your destination on the right",
+          distance: "0.1 miles",
+          duration: "30 secs",
+          coordinates: end,
+          maneuver: "arrive"
+        }
+      ];
+      
+      setRoute(steps);
+      setCurrentStepIndex(0);
+      
+      toast({
+        title: "Route calculated (offline mode)",
+        description: `Using fallback route with ${steps.length} steps`,
+        variant: "destructive",
+      });
+    }
   };
 
   const startNavigation = () => {
