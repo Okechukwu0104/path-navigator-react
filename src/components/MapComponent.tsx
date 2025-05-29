@@ -1,4 +1,3 @@
-
 import React, { useRef, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 
@@ -54,22 +53,22 @@ const MapComponent: React.FC<MapComponentProps> = ({
     if (mapView === 'satellite') {
       // Satellite view background
       const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
-      gradient.addColorStop(0, '#1a4b3a');
-      gradient.addColorStop(0.5, '#2d5a4a');
-      gradient.addColorStop(1, '#1a3d2e');
+      gradient.addColorStop(0, '#2a4a3a');
+      gradient.addColorStop(0.5, '#3d6b5a');
+      gradient.addColorStop(1, '#2a3d2e');
       ctx.fillStyle = gradient;
     } else {
-      // Road map background
-      ctx.fillStyle = '#f8f9fa';
+      // Clean map background like in Figma
+      ctx.fillStyle = '#f8fafb';
     }
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // Draw grid lines for map effect
-    ctx.strokeStyle = mapView === 'satellite' ? '#4a6b5a' : '#e9ecef';
+    // Draw subtle grid lines for map effect
+    ctx.strokeStyle = mapView === 'satellite' ? '#4a6b5a' : '#e8f0f2';
     ctx.lineWidth = 1;
     
     // Vertical lines
-    for (let x = 0; x < canvas.width; x += 50) {
+    for (let x = 0; x < canvas.width; x += 40) {
       ctx.beginPath();
       ctx.moveTo(x, 0);
       ctx.lineTo(x, canvas.height);
@@ -77,7 +76,7 @@ const MapComponent: React.FC<MapComponentProps> = ({
     }
     
     // Horizontal lines
-    for (let y = 0; y < canvas.height; y += 50) {
+    for (let y = 0; y < canvas.height; y += 40) {
       ctx.beginPath();
       ctx.moveTo(0, y);
       ctx.lineTo(canvas.width, y);
@@ -116,10 +115,12 @@ const MapComponent: React.FC<MapComponentProps> = ({
       }
     }
 
-    // Draw route path
+    // Draw route path with modern styling
     if (route.length > 0) {
-      ctx.strokeStyle = '#3b82f6';
-      ctx.lineWidth = 6;
+      ctx.strokeStyle = '#10b981'; // Green color like in Figma
+      ctx.lineWidth = 8;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
       ctx.setLineDash([]);
       
       ctx.beginPath();
@@ -135,91 +136,97 @@ const MapComponent: React.FC<MapComponentProps> = ({
       });
       ctx.stroke();
 
+      // Draw route points
+      route.forEach((step, index) => {
+        const x = lngToX(step.coordinates.lng);
+        const y = latToY(step.coordinates.lat);
+        
+        // Point circle
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(x, y, 8, 0, 2 * Math.PI);
+        ctx.fill();
+        
+        ctx.fillStyle = '#10b981';
+        ctx.beginPath();
+        ctx.arc(x, y, 5, 0, 2 * Math.PI);
+        ctx.fill();
+      });
+
       // Highlight current step if navigating
       if (isNavigating && currentStepIndex < route.length) {
         const currentStep = route[currentStepIndex];
         const x = lngToX(currentStep.coordinates.lng);
         const y = latToY(currentStep.coordinates.lat);
         
-        // Pulsing circle for current step
+        // Animated pulse for current step
         ctx.fillStyle = '#ef4444';
         ctx.beginPath();
-        ctx.arc(x, y, 12, 0, 2 * Math.PI);
+        ctx.arc(x, y, 15, 0, 2 * Math.PI);
         ctx.fill();
         
         ctx.fillStyle = '#ffffff';
         ctx.beginPath();
-        ctx.arc(x, y, 6, 0, 2 * Math.PI);
+        ctx.arc(x, y, 8, 0, 2 * Math.PI);
         ctx.fill();
       }
     }
 
-    // Draw current location
+    // Draw current location with modern styling
     const currentX = lngToX(currentLocation.lng);
     const currentY = latToY(currentLocation.lat);
     
-    // Blue circle for current location
+    // Location circle with shadow effect
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.arc(currentX, currentY, 12, 0, 2 * Math.PI);
+    ctx.fill();
+    
     ctx.fillStyle = '#3b82f6';
     ctx.beginPath();
     ctx.arc(currentX, currentY, 8, 0, 2 * Math.PI);
     ctx.fill();
-    
-    ctx.fillStyle = '#ffffff';
-    ctx.beginPath();
-    ctx.arc(currentX, currentY, 4, 0, 2 * Math.PI);
-    ctx.fill();
 
-    // Draw destination
+    // Draw destination with modern styling
     if (destination) {
       const destX = lngToX(destination.lng);
       const destY = latToY(destination.lat);
       
-      // Red pin for destination
+      // Destination pin
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(destX, destY, 15, 0, 2 * Math.PI);
+      ctx.fill();
+      
       ctx.fillStyle = '#ef4444';
       ctx.beginPath();
       ctx.arc(destX, destY, 10, 0, 2 * Math.PI);
-      ctx.fill();
-      
-      ctx.fillStyle = '#ffffff';
-      ctx.beginPath();
-      ctx.arc(destX, destY, 5, 0, 2 * Math.PI);
       ctx.fill();
     }
 
   }, [currentLocation, destination, route, currentStepIndex, isNavigating, mapView]);
 
   return (
-    <div ref={mapRef} className="w-full h-full relative bg-gray-100">
+    <div ref={mapRef} className="w-full h-full relative bg-gray-50">
       <canvas
         ref={canvasRef}
         className="w-full h-full"
         style={{ width: '100%', height: '100%' }}
       />
       
-      {/* Map Controls */}
-      <div className="absolute bottom-4 right-4 space-y-2">
-        <Card className="p-2 bg-white/95 backdrop-blur-sm">
-          <div className="flex flex-col space-y-1">
-            <button className="w-8 h-8 bg-white hover:bg-gray-50 border rounded flex items-center justify-center text-lg font-bold">
+      {/* Modern Map Controls */}
+      <div className="absolute bottom-6 right-6">
+        <Card className="p-2 bg-white shadow-lg border-0 rounded-xl">
+          <div className="flex flex-col space-y-2">
+            <button className="w-10 h-10 bg-white hover:bg-gray-50 rounded-lg flex items-center justify-center text-lg font-bold transition-colors shadow-sm">
               +
             </button>
-            <button className="w-8 h-8 bg-white hover:bg-gray-50 border rounded flex items-center justify-center text-lg font-bold">
+            <button className="w-10 h-10 bg-white hover:bg-gray-50 rounded-lg flex items-center justify-center text-lg font-bold transition-colors shadow-sm">
               −
             </button>
           </div>
         </Card>
       </div>
-
-      {/* Speed and Navigation Info */}
-      {isNavigating && (
-        <Card className="absolute bottom-4 left-4 p-3 bg-white/95 backdrop-blur-sm">
-          <div className="text-xs text-gray-600">Current Speed</div>
-          <div className="text-lg font-bold">25 mph</div>
-          <div className="text-xs text-gray-600 mt-1">
-            ETA: {Math.floor(Math.random() * 30) + 5} mins
-          </div>
-        </Card>
-      )}
     </div>
   );
 };

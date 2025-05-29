@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
-import { Search, MapPin, Navigation } from 'lucide-react';
+import { Search, MapPin, Navigation, Clock } from 'lucide-react';
 
 interface Location {
   lat: number;
@@ -96,55 +96,72 @@ const SearchPanel: React.FC<SearchPanelProps> = ({ onDestinationSelect, currentL
 
   return (
     <div className="space-y-4">
+      {/* Title */}
       <div>
-        <label className="text-sm font-medium text-gray-700 mb-2 block">
-          Where do you want to go?
-        </label>
-        
-        <form onSubmit={handleSearch} className="space-y-2">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-            <Input
-              type="text"
-              placeholder="Search for a destination..."
-              value={searchQuery}
-              onChange={(e) => {
-                setSearchQuery(e.target.value);
-                searchLocations(e.target.value);
-              }}
-              className="pl-10 pr-4"
-            />
-          </div>
-        </form>
+        <h2 className="text-xl font-semibold text-gray-900 mb-1">Where to?</h2>
+        <p className="text-sm text-gray-600">Search for a destination</p>
+      </div>
+      
+      {/* Search Input */}
+      <div className="relative">
+        <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+        <Input
+          type="text"
+          placeholder="Enter destination..."
+          value={searchQuery}
+          onChange={(e) => {
+            setSearchQuery(e.target.value);
+            searchLocations(e.target.value);
+          }}
+          className="pl-12 pr-4 py-3 text-base border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent"
+        />
+      </div>
 
+      {/* Quick Actions */}
+      <div className="space-y-2">
         <Button
           onClick={useCurrentLocation}
           variant="outline"
           size="sm"
-          className="w-full mt-2"
+          className="w-full justify-start text-left p-3 h-auto border-gray-200 rounded-xl hover:bg-gray-50"
           disabled={!currentLocation}
         >
-          <Navigation className="h-4 w-4 mr-2" />
-          Use Current Location
+          <Navigation className="h-5 w-5 mr-3 text-green-500" />
+          <div>
+            <div className="font-medium text-gray-900">Use Current Location</div>
+            <div className="text-xs text-gray-500">Start from here</div>
+          </div>
+        </Button>
+
+        <Button
+          variant="outline"
+          size="sm"
+          className="w-full justify-start text-left p-3 h-auto border-gray-200 rounded-xl hover:bg-gray-50"
+        >
+          <Clock className="h-5 w-5 mr-3 text-blue-500" />
+          <div>
+            <div className="font-medium text-gray-900">Recent Searches</div>
+            <div className="text-xs text-gray-500">View your recent destinations</div>
+          </div>
         </Button>
       </div>
 
       {/* Search Suggestions */}
       {suggestions.length > 0 && (
-        <Card className="p-2 max-h-60 overflow-y-auto">
-          <div className="space-y-1">
+        <Card className="border-0 shadow-lg rounded-xl overflow-hidden">
+          <div className="max-h-60 overflow-y-auto">
             {suggestions.map((suggestion, index) => (
               <button
                 key={index}
                 onClick={() => handleSuggestionClick(suggestion)}
-                className="w-full text-left p-2 hover:bg-gray-100 rounded-md transition-colors flex items-start space-x-2"
+                className="w-full text-left p-4 hover:bg-gray-50 transition-colors flex items-start space-x-3 border-b border-gray-100 last:border-b-0"
               >
-                <MapPin className="h-4 w-4 text-gray-400 mt-0.5 flex-shrink-0" />
+                <MapPin className="h-5 w-5 text-gray-400 mt-0.5 flex-shrink-0" />
                 <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium text-gray-900 truncate">
+                  <div className="font-medium text-gray-900 truncate">
                     {suggestion.address}
                   </div>
-                  <div className="text-xs text-gray-500">
+                  <div className="text-sm text-gray-500 mt-1">
                     {suggestion.lat.toFixed(4)}, {suggestion.lng.toFixed(4)}
                   </div>
                 </div>
@@ -157,7 +174,7 @@ const SearchPanel: React.FC<SearchPanelProps> = ({ onDestinationSelect, currentL
       {isSearching && (
         <div className="text-center py-4">
           <div className="inline-flex items-center space-x-2 text-sm text-gray-600">
-            <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+            <div className="w-4 h-4 border-2 border-green-500 border-t-transparent rounded-full animate-spin"></div>
             <span>Searching...</span>
           </div>
         </div>

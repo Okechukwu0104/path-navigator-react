@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -31,6 +32,7 @@ const Index = () => {
   const [isNavigating, setIsNavigating] = useState(false);
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [mapView, setMapView] = useState<'roadmap' | 'satellite'>('roadmap');
+  const [showRoutePanel, setShowRoutePanel] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -198,101 +200,170 @@ const Index = () => {
 
   const handleDestinationSelect = (location: Location) => {
     setDestination(location);
+    setShowRoutePanel(true);
     if (currentLocation) {
       calculateRoute(currentLocation, location);
     }
   };
 
   return (
-    <div className="h-screen flex flex-col bg-gray-50">
-      {/* Header */}
-      <div className="bg-white shadow-sm border-b px-4 py-3 flex items-center justify-between">
-        <div className="flex items-center space-x-2">
-          <div className="p-2 bg-blue-500 rounded-lg">
-            <Navigation className="h-6 w-6 text-white" />
-          </div>
-          <h1 className="text-xl font-bold text-gray-900">NaviMaps</h1>
-        </div>
+    <div className="h-screen flex bg-white relative overflow-hidden">
+      {/* Map Area - Full Screen */}
+      <div className="flex-1 relative">
+        <MapComponent
+          currentLocation={currentLocation}
+          destination={destination}
+          route={route}
+          currentStepIndex={currentStepIndex}
+          isNavigating={isNavigating}
+          mapView={mapView}
+        />
         
-        <div className="flex items-center space-x-2">
-          <Button
-            variant={mapView === 'roadmap' ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setMapView('roadmap')}
-          >
-            <MapPin className="h-4 w-4 mr-1" />
-            Map
-          </Button>
-          <Button
-            variant={mapView === 'satellite' ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setMapView('satellite')}
-          >
-            Satellite
-          </Button>
-        </div>
-      </div>
-
-      {/* Main Content */}
-      <div className="flex-1 flex">
-        {/* Left Panel */}
-        <div className="w-80 bg-white shadow-lg border-r flex flex-col">
-          {/* Search Panel */}
-          <div className="p-4 border-b">
+        {/* Top Left Search Panel */}
+        <Card className="absolute top-6 left-6 w-80 bg-white shadow-xl border-0 rounded-2xl overflow-hidden">
+          <div className="p-6">
             <SearchPanel 
               onDestinationSelect={handleDestinationSelect}
               currentLocation={currentLocation}
             />
           </div>
+        </Card>
 
-          {/* Route Information */}
-          {route.length > 0 && (
-            <div className="flex-1 overflow-y-auto">
+        {/* Transport Options Panel - Shows when route is calculated */}
+        {showRoutePanel && route.length > 0 && (
+          <Card className="absolute bottom-6 left-6 w-80 bg-white shadow-xl border-0 rounded-2xl overflow-hidden">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-gray-900">Transport options</h3>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowRoutePanel(false)}
+                  className="h-8 w-8 p-0"
+                >
+                  ×
+                </Button>
+              </div>
+              
+              {/* Transport Options */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between p-3 bg-green-50 border border-green-200 rounded-xl">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
+                      <Route className="h-4 w-4 text-white" />
+                    </div>
+                    <div>
+                      <div className="font-medium text-gray-900">By car</div>
+                      <div className="text-sm text-gray-600">{route.length} stops</div>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="font-bold text-green-600">1200-2500</div>
+                    <div className="text-xs text-gray-500">Total cost</div>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between p-3 border border-gray-200 rounded-xl hover:bg-gray-50">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
+                      <Navigation className="h-4 w-4 text-white" />
+                    </div>
+                    <div>
+                      <div className="font-medium text-gray-900">By public transport</div>
+                      <div className="text-sm text-gray-600">Metro + Bus</div>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="font-bold text-blue-600">300-500</div>
+                    <div className="text-xs text-gray-500">Total cost</div>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between p-3 border border-gray-200 rounded-xl hover:bg-gray-50">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-8 h-8 bg-orange-500 rounded-full flex items-center justify-center">
+                      <MapPin className="h-4 w-4 text-white" />
+                    </div>
+                    <div>
+                      <div className="font-medium text-gray-900">By taxi</div>
+                      <div className="text-sm text-gray-600">Direct route</div>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="font-bold text-orange-600">800-1200</div>
+                    <div className="text-xs text-gray-500">Total cost</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Start Navigation Button */}
+              <Button 
+                onClick={startNavigation}
+                className="w-full mt-4 bg-green-500 hover:bg-green-600 text-white py-3 rounded-xl font-medium"
+              >
+                Start Navigation
+              </Button>
+            </div>
+          </Card>
+        )}
+
+        {/* Navigation Controls - Only show during navigation */}
+        {isNavigating && (
+          <Card className="absolute top-6 right-6 w-80 bg-white shadow-xl border-0 rounded-2xl overflow-hidden">
+            <div className="p-6">
               <RouteInfo 
                 route={route}
                 currentStepIndex={currentStepIndex}
                 isNavigating={isNavigating}
               />
-            </div>
-          )}
-
-          {/* Navigation Controls */}
-          {route.length > 0 && (
-            <div className="p-4 border-t bg-gray-50">
-              <NavigationControls
-                isNavigating={isNavigating}
-                onStartNavigation={startNavigation}
-                onStopNavigation={stopNavigation}
-                onNextStep={nextStep}
-                canGoNext={currentStepIndex < route.length - 1}
-              />
-            </div>
-          )}
-        </div>
-
-        {/* Map Area */}
-        <div className="flex-1 relative">
-          <MapComponent
-            currentLocation={currentLocation}
-            destination={destination}
-            route={route}
-            currentStepIndex={currentStepIndex}
-            isNavigating={isNavigating}
-            mapView={mapView}
-          />
-          
-          {/* Current Location Info */}
-          {currentLocation && (
-            <Card className="absolute top-4 right-4 p-3 bg-white/95 backdrop-blur-sm">
-              <div className="flex items-center space-x-2 text-sm">
-                <div className="w-3 h-3 bg-blue-500 rounded-full navigation-pulse"></div>
-                <span className="font-medium">Current Location</span>
+              <div className="mt-4">
+                <NavigationControls
+                  isNavigating={isNavigating}
+                  onStartNavigation={startNavigation}
+                  onStopNavigation={stopNavigation}
+                  onNextStep={nextStep}
+                  canGoNext={currentStepIndex < route.length - 1}
+                />
               </div>
-              <div className="text-xs text-gray-600 mt-1">
-                {currentLocation.lat.toFixed(6)}, {currentLocation.lng.toFixed(6)}
+            </div>
+          </Card>
+        )}
+
+        {/* Current Location Info */}
+        {currentLocation && (
+          <Card className="absolute bottom-6 right-6 p-4 bg-white/95 backdrop-blur-sm shadow-lg border-0 rounded-2xl">
+            <div className="flex items-center space-x-3 text-sm">
+              <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
+              <div>
+                <div className="font-medium text-gray-900">Current Location</div>
+                <div className="text-xs text-gray-600">
+                  {currentLocation.lat.toFixed(6)}, {currentLocation.lng.toFixed(6)}
+                </div>
               </div>
-            </Card>
-          )}
+            </div>
+          </Card>
+        )}
+
+        {/* Map View Toggle */}
+        <div className="absolute top-6 right-6">
+          <div className="flex bg-white rounded-xl shadow-lg overflow-hidden">
+            <Button
+              variant={mapView === 'roadmap' ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => setMapView('roadmap')}
+              className="rounded-none border-0"
+            >
+              Map
+            </Button>
+            <Button
+              variant={mapView === 'satellite' ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => setMapView('satellite')}
+              className="rounded-none border-0"
+            >
+              Satellite
+            </Button>
+          </div>
         </div>
       </div>
     </div>
