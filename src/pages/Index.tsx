@@ -88,7 +88,6 @@ const Index = () => {
       
       // Convert Google Directions steps to our format
       const steps: RouteStep[] = legs.steps.map((step: any, index: number) => {
-        // Extract maneuver type from HTML instructions
         let maneuver = 'straight';
         const instructions = step.html_instructions.toLowerCase();
         
