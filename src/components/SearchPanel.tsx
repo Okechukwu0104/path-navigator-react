@@ -14,82 +14,105 @@ interface Location {
 interface SearchPanelProps {
   onDestinationSelect: (location: Location) => void;
   currentLocation: Location | null;
+  isLoaded?: boolean; // Optional, but recommended to pass from parent
 }
 
-const SearchPanel: React.FC<SearchPanelProps> = ({ onDestinationSelect, currentLocation }) => {
+const SearchPanel: React.FC<SearchPanelProps> = ({
+  onDestinationSelect,
+  currentLocation,
+  isLoaded = true, // fallback to true for backward compatibility
+}) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [suggestions, setSuggestions] = useState<Location[]>([]);
   const [isSearching, setIsSearching] = useState(false);
-  const [autocompleteService, setAutocompleteService] = useState<google.maps.places.AutocompleteService | null>(null);
-  const [placesService, setPlacesService] = useState<google.maps.places.PlacesService | null>(null);
+  const [autocompleteService, setAutocompleteService] =
+    useState<google.maps.places.AutocompleteService | null>(null);
+  const [placesService, setPlacesService] =
+    useState<google.maps.places.PlacesService | null>(null);
 
-  // Initialize Google Places services
+  // Initialize Google Places services only when API is loaded
   useEffect(() => {
-    if (window.google && window.google.maps) {
-      setAutocompleteService(new window.google.maps.places.AutocompleteService());
+    if (
+      isLoaded &&
+      window.google &&
+      window.google.maps &&
+      window.google.maps.places
+    ) {
+      setAutocompleteService(
+        new window.google.maps.places.AutocompleteService()
+      );
       const map = new window.google.maps.Map(document.createElement('div'));
       setPlacesService(new window.google.maps.places.PlacesService(map));
     }
-  }, []);
+  }, [isLoaded]);
 
-  const searchLocations = React.useCallback((query: string) => {
-    if (!query.trim() || !autocompleteService) {
-      setSuggestions([]);
-      return;
-    }
-
-    setIsSearching(true);
-
-    autocompleteService.getPlacePredictions(
-      {
-        input: query,
-        componentRestrictions: { country: 'ng' },
-        location: new google.maps.LatLng(6.5244, 3.3792), // Lagos coordinates
-        radius: 50000, // 50km around Lagos
-        types: ['establishment', 'geocode']
-      },
-      (predictions, status) => {
-        if (status !== google.maps.places.PlacesServiceStatus.OK || !predictions || !placesService) {
-          setIsSearching(false);
-          return;
-        }
-
-        // Get details for each prediction
-        const detailsPromises = predictions.slice(0, 5).map(prediction => {
-          return new Promise<Location | null>((resolve) => {
-            placesService.getDetails(
-              { placeId: prediction.place_id },
-              (place, status) => {
-                if (status === google.maps.places.PlacesServiceStatus.OK && place?.geometry?.location) {
-                  resolve({
-                    lat: place.geometry.location.lat(),
-                    lng: place.geometry.location.lng(),
-                    name: place.name || '',
-                    address: place.formatted_address || ''
-                  });
-                } else {
-                  resolve(null);
-                }
-              }
-            );
-          });
-        });
-
-        Promise.all(detailsPromises).then(results => {
-          setSuggestions(results.filter(Boolean) as Location[]);
-          setIsSearching(false);
-        });
+  const searchLocations = React.useCallback(
+    (query: string) => {
+      if (!query.trim() || !autocompleteService) {
+        setSuggestions([]);
+        return;
       }
-    );
-  }, [autocompleteService, placesService]);
+
+      setIsSearching(true);
+
+      autocompleteService.getPlacePredictions(
+        {
+          input: query,
+          componentRestrictions: { country: 'ng' },
+          location: new google.maps.LatLng(6.5244, 3.3792), // Lagos coordinates
+          radius: 50000, // 50km around Lagos
+          types: ['establishment', 'geocode'],
+        },
+        (predictions, status) => {
+          if (
+            status !== google.maps.places.PlacesServiceStatus.OK ||
+            !predictions ||
+            !placesService
+          ) {
+            setIsSearching(false);
+            setSuggestions([]);
+            return;
+          }
+
+          // Get details for each prediction
+          const detailsPromises = predictions.slice(0, 5).map((prediction) => {
+            return new Promise<Location | null>((resolve) => {
+              placesService.getDetails(
+                { placeId: prediction.place_id },
+                (place, status) => {
+                  if (
+                    status === google.maps.places.PlacesServiceStatus.OK &&
+                    place?.geometry?.location
+                  ) {
+                    resolve({
+                      lat: place.geometry.location.lat(),
+                      lng: place.geometry.location.lng(),
+                      name: place.name || '',
+                      address: place.formatted_address || '',
+                    });
+                  } else {
+                    resolve(null);
+                  }
+                }
+              );
+            });
+          });
+
+          Promise.all(detailsPromises).then((results) => {
+            setSuggestions(results.filter(Boolean) as Location[]);
+            setIsSearching(false);
+          });
+        }
+      );
+    },
+    [autocompleteService, placesService]
+  );
 
   useEffect(() => {
-    const timer = setTimeout(() => {
+    if (isLoaded) {
       searchLocations(searchQuery);
-    }, 500);
-
-    return () => clearTimeout(timer);
-  }, [searchQuery, searchLocations]);
+    }
+  }, [searchQuery, searchLocations, isLoaded]);
 
   const handleSuggestionClick = (location: Location) => {
     onDestinationSelect(location);
@@ -102,19 +125,22 @@ const SearchPanel: React.FC<SearchPanelProps> = ({ onDestinationSelect, currentL
       onDestinationSelect({
         ...currentLocation,
         name: 'Current Location',
-        address: 'Your current location'
+        address: 'Your current location',
       });
       setSearchQuery('Current Location');
+      setSuggestions([]);
     }
   };
 
   return (
     <div className="space-y-4">
       <div>
-        <h2 className="text-xl font-semibold text-gray-900 mb-1">Where to in Lagos?</h2>
+        <h2 className="text-xl font-semibold text-gray-900 mb-1">
+          Where to in Lagos?
+        </h2>
         <p className="text-sm text-gray-600">Search for a destination</p>
       </div>
-      
+
       <div className="relative">
         <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
         <Input
