@@ -1,3 +1,4 @@
+// pages/Index.tsx
 import React, { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -8,9 +9,26 @@ import RouteInfo from "@/components/RouteInfo";
 import NavigationControls from "@/components/NavigationControls";
 import { useToast } from "@/hooks/use-toast";
 import { useLoadScript } from "@react-google-maps/api";
+// import { UserButton } from "@clerk/clerk-react"; // REMOVE THIS LINE
 
 const libraries = ["places", "geometry"];
 
+interface TransportStep {
+  start: string;
+  start_lat: string;
+  start_long: string;
+  stop: string;
+  stop_lat: string;
+  stop_long: string;
+  price: string;
+  type_of_vehicle: string;
+  notes: string;
+}
+
+interface TransportRoute {
+  routeA: TransportStep[];
+  routeB: TransportStep[];
+}
 interface Location {
   lat: number;
   lng: number;
@@ -42,8 +60,13 @@ const Index = () => {
   const [mapView, setMapView] = useState<"roadmap" | "satellite">("roadmap");
   const [showRoutePanel, setShowRoutePanel] = useState(false);
   const { toast } = useToast();
+  const [transportRoutes, setTransportRoutes] = useState<TransportRoute | null>(
+    null
+  );
+  const [selectedRoute, setSelectedRoute] = useState<"routeA" | "routeB">(
+    "routeA"
+  );
 
-  /////////////////////////////////////////////////////////////////
   useEffect(() => {
     // Get user's current location
     if (navigator.geolocation) {
@@ -75,33 +98,85 @@ const Index = () => {
   }, [toast]);
 
   useEffect(() => {
-    if (currentLocation && destination) {
-      const payload = [
-        {
-          "start-name": currentLocation.name || "",
-          "start-long": currentLocation.lng,
-          "start-lat": currentLocation.lat,
-          "stop-name": destination.name || "",
-          "stop-long": destination.lng,
-          "stop-lat": destination.lat,
-        },
-      ];
-      alert("recieved the json...ready for takeoff");
-      // Send to backend
-      fetch("/your-backend-endpoint", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+  if (currentLocation && destination) {
+    const payload = [
+      {
+        "start-name": currentLocation.name || "",
+        "start-long": currentLocation.lng,
+        "start-lat": currentLocation.lat,
+        "stop-name": destination.name || "",
+        "stop-long": destination.lng,
+        "stop-lat": destination.lat,
+      },
+    ];
+    
+      fetch("https://c4882168-00d8-4fc6-8900-6af6c0bec77c.mock.pstmn.io", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    })
+      .then(res => {
+        if (!res.ok) {
+          throw new Error(`HTTP error! status: ${res.status}`);
+        }
+        return res.json();
       })
-        .then(res => res.json())
-        .then(data => {
-          // handle response if needed
+      .then(data => {
+        setTransportRoutes({
+          routeA: data.routesA || [],
+          routeB: data.routesB || []
         });
-    }
-  }, [currentLocation, destination]);
+      })
+      .catch(error => {
+        console.error("Error fetching transport routes:", error);
+        // Set empty routes when API fails
+        setTransportRoutes({
+          routeA: [],
+          routeB: []
+        });
+        toast({
+          title: "Transport routes unavailable",
+          description: "Showing default route options",
+          variant: "destructive",
+        });
+      });
+  }
+}, [currentLocation, destination, toast]);
 
-  //////////////////////////////////////////////////////////////
-
+  if (loadError) {
+    return (
+      <div className="w-full h-full flex items-center justify-center bg-gray-100">
+        <Card className="p-4 text-center">
+          <h3 className="text-lg font-medium text-red-600">
+            Error loading Google Maps
+          </h3>
+          <p className="text-sm text-gray-600 mt-2">
+            Please check your internet connection and try again.
+          </p>
+        </Card>
+      </div>
+    );
+  }
+  const convertTransportToSteps = (
+    transportSteps: TransportStep[]
+  ): RouteStep[] => {
+    return transportSteps.map((step, index) => ({
+      instruction: `Take ${step.type_of_vehicle} from ${step.start} to ${step.stop}. ${step.notes}`,
+      distance: "N/A", // Could calculate this if needed
+      duration: "N/A", // Could estimate this if needed
+      coordinates: {
+        lat: parseFloat(step.stop_lat),
+        lng: parseFloat(step.stop_long),
+      },
+      maneuver: index === transportSteps.length - 1 ? "arrive" : "straight",
+    }));
+  };
+  const getTransportRouteCoordinates = (steps: TransportStep[]) => {
+    return steps.map(step => ({
+      lat: parseFloat(step.start_lat),
+      lng: parseFloat(step.start_long),
+    }));
+  };
   const calculateRoute = async (start: Location, end: Location) => {
     try {
       console.log("Calculating route from", start, "to", end);
@@ -147,7 +222,7 @@ const Index = () => {
         }
 
         return {
-          instruction: step.html_instructions.replace(/<[^>]*>/g, ""), // Remove HTML tags
+          instruction: step.html_instructions.replace(/<[^>]*>/g, ""),
           distance: step.distance.text,
           duration: step.duration.text,
           coordinates: {
@@ -252,174 +327,274 @@ const Index = () => {
   };
 
   return (
-    <div className="h-screen flex bg-white relative overflow-hidden">
-      {/* Map Area - Full Screen */}
-      <div className="flex-1 relative">
-        <MapComponent
-          currentLocation={currentLocation}
-          destination={destination}
-          route={route}
-          currentStepIndex={currentStepIndex}
-          isNavigating={isNavigating}
-          mapView={mapView}
-        />
-
-        {/* Top Left Search Panel */}
-        <Card className="absolute top-6 left-6 w-80 bg-white shadow-xl border-0 rounded-2xl overflow-hidden">
-          <div className="p-6">
-            <SearchPanel
-              onDestinationSelect={handleDestinationSelect}
-              currentLocation={currentLocation}
-              isLoaded={isLoaded}
-            />
-          </div>
-        </Card>
-
-        {/* Transport Options Panel - Shows when route is calculated */}
-        {showRoutePanel && route.length > 0 && (
-          <Card className="absolute bottom-6 left-6 w-80 bg-white shadow-xl border-0 rounded-2xl overflow-hidden">
-            <div className="p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-gray-900">
-                  Transport options
-                </h3>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setShowRoutePanel(false)}
-                  className="h-8 w-8 p-0"
-                >
-                  ×
-                </Button>
-              </div>
-
-              {/* Transport Options */}
-              <div className="space-y-3">
-                <div className="flex items-center justify-between p-3 bg-green-50 border border-green-200 rounded-xl">
-                  <div className="flex items-center space-x-3">
-                    <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
-                      <Route className="h-4 w-4 text-white" />
-                    </div>
-                    <div>
-                      <div className="font-medium text-gray-900">By car</div>
-                      <div className="text-sm text-gray-600">
-                        {route.length} stops
-                      </div>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <div className="font-bold text-green-600">1200-2500</div>
-                    <div className="text-xs text-gray-500">Total cost</div>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between p-3 border border-gray-200 rounded-xl hover:bg-gray-50">
-                  <div className="flex items-center space-x-3">
-                    <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
-                      <Navigation className="h-4 w-4 text-white" />
-                    </div>
-                    <div>
-                      <div className="font-medium text-gray-900">
-                        By public transport
-                      </div>
-                      <div className="text-sm text-gray-600">Metro + Bus</div>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <div className="font-bold text-blue-600">300-500</div>
-                    <div className="text-xs text-gray-500">Total cost</div>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between p-3 border border-gray-200 rounded-xl hover:bg-gray-50">
-                  <div className="flex items-center space-x-3">
-                    <div className="w-8 h-8 bg-orange-500 rounded-full flex items-center justify-center">
-                      <MapPin className="h-4 w-4 text-white" />
-                    </div>
-                    <div>
-                      <div className="font-medium text-gray-900">By taxi</div>
-                      <div className="text-sm text-gray-600">Direct route</div>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <div className="font-bold text-orange-600">800-1200</div>
-                    <div className="text-xs text-gray-500">Total cost</div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Start Navigation Button */}
-              <Button
-                onClick={startNavigation}
-                className="w-full mt-4 bg-green-500 hover:bg-green-600 text-white py-3 rounded-xl font-medium"
-              >
-                Start Navigation
-              </Button>
+    <div className="h-screen w-full flex bg-white relative overflow-hidden">
+      {/* Map Container - must have explicit dimensions */}
+      <div className="flex-1 w-full h-full">
+        {!isLoaded ? (
+          <div className="w-full h-full flex items-center justify-center bg-gray-100">
+            <div className="flex flex-col items-center">
+              <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4" />
+              <p className="text-gray-700">Loading Google Maps...</p>
             </div>
-          </Card>
-        )}
-
-        {/* Navigation Controls - Only show during navigation */}
-        {isNavigating && (
-          <Card className="absolute top-6 right-6 w-80 bg-white shadow-xl border-0 rounded-2xl overflow-hidden">
-            <div className="p-6">
-              <RouteInfo
-                route={route}
-                currentStepIndex={currentStepIndex}
-                isNavigating={isNavigating}
+          </div>
+        ) : (
+          <>
+            {/* REMOVE THIS User Button block from Index.tsx
+            <div className="absolute top-4 right-4 z-50">
+              <UserButton
+                appearance={{
+                  elements: {
+                    userButtonBox: "h-10 w-10",
+                    userButtonAvatarBox: "h-full w-full"
+                  }
+                }}
               />
-              <div className="mt-4">
-                <NavigationControls
-                  isNavigating={isNavigating}
-                  onStartNavigation={startNavigation}
-                  onStopNavigation={stopNavigation}
-                  onNextStep={nextStep}
-                  canGoNext={currentStepIndex < route.length - 1}
+            </div>
+            */}
+            {/* Main Map Component */}
+            <MapComponent
+              currentLocation={currentLocation}
+              destination={destination}
+              route={route}
+              currentStepIndex={currentStepIndex}
+              isNavigating={isNavigating}
+              mapView={mapView}
+              transportRoute={
+                selectedRoute && transportRoutes
+                  ? getTransportRouteCoordinates(transportRoutes[selectedRoute])
+                  : null
+              }
+            />
+            {/* Search Panel */}
+            <Card className="absolute top-6 left-6 w-80 bg-white shadow-xl border-0 rounded-2xl overflow-hidden z-10">
+              <div className="p-6">
+                <SearchPanel
+                  onDestinationSelect={handleDestinationSelect}
+                  currentLocation={currentLocation}
+                  isLoaded={isLoaded}
                 />
               </div>
-            </div>
-          </Card>
-        )}
+            </Card>
+            {/* Transport Options Panel */}
+            {showRoutePanel && (
+              <Card className="absolute bottom-6 left-6 w-80 bg-white shadow-xl border-0 rounded-2xl overflow-hidden z-10">
+                <div className="p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-semibold text-gray-900">
+                      Transport options
+                    </h3>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setShowRoutePanel(false)}
+                      className="h-8 w-8 p-0"
+                    >
+                      ×
+                    </Button>
+                  </div>
 
-        {/* Current Location Info */}
-        {currentLocation && (
-          <Card className="absolute bottom-6 right-6 p-4 bg-white/95 backdrop-blur-sm shadow-lg border-0 rounded-2xl">
-            <div className="flex items-center space-x-3 text-sm">
-              <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
-              <div>
-                <div className="font-medium text-gray-900">
-                  Current Location
+                  <div className="space-y-3">
+                    {/* Route A - Danfo Option */}
+                    <div
+                      className={`flex items-center justify-between p-3 border rounded-xl cursor-pointer ${
+                        selectedRoute === "routeA"
+                          ? "bg-green-50 border-green-200"
+                          : "border-gray-200 hover:bg-gray-50"
+                      }`}
+                      onClick={() => setSelectedRoute("routeA")}
+                    >
+                      <div className="flex items-center space-x-3">
+                        <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
+                          <Route className="h-4 w-4 text-white" />
+                        </div>
+                        <div>
+                          <div className="font-medium text-gray-900">
+                            Danfo Route
+                          </div>
+                          <div className="text-sm text-gray-600">
+                            {transportRoutes?.routeA.length || 0} transfers
+                          </div>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="font-bold text-green-600">
+                          ₦
+                          {transportRoutes?.routeA.reduce(
+                            (sum, step) => sum + parseInt(step.price),
+                            0
+                          ) || "100-250"}
+                        </div>
+                        <div className="text-xs text-gray-500">Total cost</div>
+                      </div>
+                    </div>
+
+                    {/* Route B - BRT Option */}
+                    <div
+                      className={`flex items-center justify-between p-3 border rounded-xl cursor-pointer ${
+                        selectedRoute === "routeB"
+                          ? "bg-blue-50 border-blue-200"
+                          : "border-gray-200 hover:bg-gray-50"
+                      }`}
+                      onClick={() => setSelectedRoute("routeB")}
+                    >
+                      <div className="flex items-center space-x-3">
+                        <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
+                          <Navigation className="h-4 w-4 text-white" />
+                        </div>
+                        <div>
+                          <div className="font-medium text-gray-900">
+                            BRT Route
+                          </div>
+                          <div className="text-sm text-gray-600">
+                            {transportRoutes?.routeB.length || 0} transfers
+                          </div>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="font-bold text-blue-600">
+                          ₦
+                          {transportRoutes?.routeB.reduce(
+                            (sum, step) => sum + parseInt(step.price),
+                            0
+                          ) || "300-500"}
+                        </div>
+                        <div className="text-xs text-gray-500">Total cost</div>
+                      </div>
+                    </div>
+
+                    {/* Taxi Option (remains the same) */}
+                    <div className="flex items-center justify-between p-3 border border-gray-200 rounded-xl hover:bg-gray-50">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-8 h-8 bg-orange-500 rounded-full flex items-center justify-center">
+                          <MapPin className="h-4 w-4 text-white" />
+                        </div>
+                        <div>
+                          <div className="font-medium text-gray-900">
+                            By taxi
+                          </div>
+                          <div className="text-sm text-gray-600">
+                            Direct route
+                          </div>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="font-bold text-orange-600">
+                          ₦800-1200
+                        </div>
+                        <div className="text-xs text-gray-500">Total cost</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <Button
+                    onClick={() => {
+                      const route =
+                        selectedRoute === "routeA"
+                          ? transportRoutes?.routeA
+                          : transportRoutes?.routeB;
+                      if (route) {
+                        setRoute(convertTransportToSteps(route));
+                        startNavigation();
+                      }
+                    }}
+                    className="w-full mt-4 bg-green-500 hover:bg-green-600 text-white py-3 rounded-xl font-medium"
+                  >
+                    Start Navigation
+                  </Button>
+
+                  {/* Show route details when a route is selected */}
+                  {selectedRoute && transportRoutes && (
+                    <div className="mt-4 p-3 bg-gray-50 rounded-lg">
+                      <h4 className="font-medium text-sm mb-2">
+                        Route Details:
+                      </h4>
+                      <div className="space-y-2 text-sm">
+                        {(transportRoutes[selectedRoute] || []).map(
+                          (step, index) => (
+                            <div key={index} className="flex items-start">
+                              <div className="w-5 h-5 bg-gray-200 rounded-full flex items-center justify-center mt-0.5 mr-2 flex-shrink-0">
+                                <span className="text-xs">{index + 1}</span>
+                              </div>
+                              <div>
+                                <p className="font-medium">
+                                  {step.type_of_vehicle}: {step.start} to{" "}
+                                  {step.stop}
+                                </p>
+                                <p className="text-gray-600">
+                                  ₦{step.price} - {step.notes}
+                                </p>
+                              </div>
+                            </div>
+                          )
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
-                <div className="text-xs text-gray-600">
-                  {currentLocation.lat.toFixed(6)},{" "}
-                  {currentLocation.lng.toFixed(6)}
+              </Card>
+            )}
+            ////////////////////////////////////////////////
+            {/* Navigation Controls */}
+            {isNavigating && (
+              <Card className="absolute top-6 right-6 w-80 bg-white shadow-xl border-0 rounded-2xl overflow-hidden z-10">
+                <div className="p-6">
+                  <RouteInfo
+                    route={route}
+                    currentStepIndex={currentStepIndex}
+                    isNavigating={isNavigating}
+                  />
+                  <div className="mt-4">
+                    <NavigationControls
+                      isNavigating={isNavigating}
+                      onStartNavigation={startNavigation}
+                      onStopNavigation={stopNavigation}
+                      onNextStep={nextStep}
+                      canGoNext={currentStepIndex < route.length - 1}
+                    />
+                  </div>
                 </div>
+              </Card>
+            )}
+            {/* Current Location Info */}
+            {currentLocation && (
+              <Card className="absolute bottom-6 right-6 p-4 bg-white/95 backdrop-blur-sm shadow-lg border-0 rounded-2xl z-10">
+                <div className="flex items-center space-x-3 text-sm">
+                  <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse" />
+                  <div>
+                    <div className="font-medium text-gray-900">
+                      Current Location
+                    </div>
+                    <div className="text-xs text-gray-600">
+                      {currentLocation.lat.toFixed(6)},{" "}
+                      {currentLocation.lng.toFixed(6)}
+                    </div>
+                  </div>
+                </div>
+              </Card>
+            )}
+            {/* Map View Toggle */}
+            <div className="absolute top-6 right-6 z-10">
+              <div className="flex bg-white rounded-xl shadow-lg overflow-hidden">
+                <Button
+                  variant={mapView === "roadmap" ? "default" : "ghost"}
+                  size="sm"
+                  onClick={() => setMapView("roadmap")}
+                  className="rounded-none border-0"
+                >
+                  Map
+                </Button>
+                <Button
+                  variant={mapView === "satellite" ? "default" : "ghost"}
+                  size="sm"
+                  onClick={() => setMapView("satellite")}
+                  className="rounded-none border-0"
+                >
+                  Satellite
+                </Button>
               </div>
             </div>
-          </Card>
+          </>
         )}
-
-        {/* Map View Toggle */}
-        <div className="absolute top-6 right-6">
-          <div className="flex bg-white rounded-xl shadow-lg overflow-hidden">
-            <Button
-              variant={mapView === "roadmap" ? "default" : "ghost"}
-              size="sm"
-              onClick={() => setMapView("roadmap")}
-              className="rounded-none border-0"
-            >
-              Map
-            </Button>
-            <Button
-              variant={mapView === "satellite" ? "default" : "ghost"}
-              size="sm"
-              onClick={() => setMapView("satellite")}
-              className="rounded-none border-0"
-            >
-              Satellite
-            </Button>
-          </div>
-        </div>
       </div>
     </div>
   );

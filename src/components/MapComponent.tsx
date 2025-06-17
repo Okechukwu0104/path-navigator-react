@@ -1,10 +1,16 @@
-import React, { useRef, useEffect, useState, useCallback } from 'react';
-import { GoogleMap, useLoadScript, Marker, DirectionsRenderer, Polyline } from '@react-google-maps/api';
-import type { Libraries } from '@react-google-maps/api';
-import { Card } from '@/components/ui/card';
+import React, { useRef, useEffect, useState, useCallback } from "react";
+import {
+  GoogleMap,
+  useLoadScript,
+  Marker,
+  DirectionsRenderer,
+  Polyline,
+} from "@react-google-maps/api";
+import type { Libraries } from "@react-google-maps/api";
+import { Card } from "@/components/ui/card";
 
 // Define libraries with correct type (only valid library names)
-const libraries: Libraries = ['places', 'geometry'];
+const libraries: Libraries = ["places", "geometry"];
 
 interface Location {
   lat: number;
@@ -26,7 +32,9 @@ interface MapComponentProps {
   route: RouteStep[];
   currentStepIndex: number;
   isNavigating: boolean;
-  mapView: 'roadmap' | 'satellite';
+  mapView: "roadmap" | "satellite";
+    transportRoute?: Location[];
+
 }
 
 const MapComponent: React.FC<MapComponentProps> = ({
@@ -35,33 +43,57 @@ const MapComponent: React.FC<MapComponentProps> = ({
   route,
   currentStepIndex,
   isNavigating,
-  mapView
+  mapView,
 }) => {
   const { isLoaded, loadError } = useLoadScript({
-    googleMapsApiKey: 'AIzaSyCsIxQ-fyrN_cOw46dFVWGMBKfI93LoVe8',
-    libraries
+    googleMapsApiKey: "AIzaSyCsIxQ-fyrN_cOw46dFVWGMBKfI93LoVe8",
+    libraries,
   });
 
-  const [directions, setDirections] = useState<google.maps.DirectionsResult | null>(null);
-  const [distance, setDistance] = useState<string>('');
-  const [duration, setDuration] = useState<string>('');
+  const [directions, setDirections] =
+    useState<google.maps.DirectionsResult | null>(null);
+  const [distance, setDistance] = useState<string>("");
+  const [duration, setDuration] = useState<string>("");
   const mapRef = useRef<google.maps.Map | null>(null);
 
   // Calculate route with waypoints
   const calculateRoute = useCallback(() => {
-    if (!isLoaded || !currentLocation || !destination || route.length === 0) return;
-
+    if (!isLoaded || !currentLocation || !destination || route.length === 0)
+      return;
+    // MapComponent.tsx
+    if (loadError) {
+      console.error("Google Maps loading error:", loadError);
+      return (
+        <div className="w-full h-full flex items-center justify-center bg-gray-100">
+          <Card className="p-4 text-center">
+            <h3 className="text-lg font-medium text-red-600">
+              Error loading Google Maps
+            </h3>
+            <p className="text-sm text-gray-600 mt-2">
+              {loadError.message ||
+                "Please check your internet connection and try again."}
+            </p>
+          </Card>
+        </div>
+      );
+    }
     const directionsService = new google.maps.DirectionsService();
     const waypoints = route
       .slice(1, -1) // Skip first and last points
       .map(step => ({
-        location: new google.maps.LatLng(step.coordinates.lat, step.coordinates.lng),
-        stopover: true
+        location: new google.maps.LatLng(
+          step.coordinates.lat,
+          step.coordinates.lng
+        ),
+        stopover: true,
       }));
 
     directionsService.route(
       {
-        origin: new google.maps.LatLng(currentLocation.lat, currentLocation.lng),
+        origin: new google.maps.LatLng(
+          currentLocation.lat,
+          currentLocation.lng
+        ),
         destination: new google.maps.LatLng(destination.lat, destination.lng),
         waypoints,
         travelMode: google.maps.TravelMode.DRIVING,
@@ -70,12 +102,12 @@ const MapComponent: React.FC<MapComponentProps> = ({
       (result, status) => {
         if (status === google.maps.DirectionsStatus.OK && result) {
           setDirections(result);
-          
+
           // Extract distance and duration
           const leg = result.routes[0].legs[0];
-          setDistance(leg.distance?.text || '');
-          setDuration(leg.duration?.text || '');
-          
+          setDistance(leg.distance?.text || "");
+          setDuration(leg.duration?.text || "");
+
           // Fit the bounds of the entire route
           const bounds = new google.maps.LatLngBounds();
           result.routes[0].legs.forEach(leg => {
@@ -99,7 +131,9 @@ const MapComponent: React.FC<MapComponentProps> = ({
     mapRef.current = map;
     // Set initial center if we have current location
     if (currentLocation) {
-      map.panTo(new google.maps.LatLng(currentLocation.lat, currentLocation.lng));
+      map.panTo(
+        new google.maps.LatLng(currentLocation.lat, currentLocation.lng)
+      );
     }
   };
 
@@ -123,28 +157,34 @@ const MapComponent: React.FC<MapComponentProps> = ({
   // Handle map view change
   const handleMapViewChange = () => {
     if (mapRef.current) {
-      const newMapType = mapView === 'roadmap' ? 'hybrid' : 'roadmap';
+      const newMapType = mapView === "roadmap" ? "hybrid" : "roadmap";
       mapRef.current.setMapTypeId(newMapType);
     }
   };
 
-  if (loadError) return (
-    <div className="w-full h-full flex items-center justify-center bg-gray-100">
-      <Card className="p-4 text-center">
-        <h3 className="text-lg font-medium text-red-600">Error loading Google Maps</h3>
-        <p className="text-sm text-gray-600 mt-2">Please check your internet connection and try again.</p>
-      </Card>
-    </div>
-  );
-
-  if (!isLoaded) return (
-    <div className="w-full h-full flex items-center justify-center bg-gray-100">
-      <div className="flex flex-col items-center">
-        <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4"></div>
-        <p className="text-gray-700">Loading Google Maps...</p>
+  if (loadError)
+    return (
+      <div className="w-full h-full flex items-center justify-center bg-gray-100">
+        <Card className="p-4 text-center">
+          <h3 className="text-lg font-medium text-red-600">
+            Error loading Google Maps
+          </h3>
+          <p className="text-sm text-gray-600 mt-2">
+            Please check your internet connection and try again.
+          </p>
+        </Card>
       </div>
-    </div>
-  );
+    );
+
+  if (!isLoaded)
+    return (
+      <div className="w-full h-full flex items-center justify-center bg-gray-100">
+        <div className="flex flex-col items-center">
+          <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4"></div>
+          <p className="text-gray-700">Loading Google Maps...</p>
+        </div>
+      </div>
+    );
 
   const mapOptions: google.maps.MapOptions = {
     disableDefaultUI: true,
@@ -152,30 +192,30 @@ const MapComponent: React.FC<MapComponentProps> = ({
     mapTypeControl: false,
     streetViewControl: false,
     fullscreenControl: false,
-    mapTypeId: mapView === 'satellite' ? 'hybrid' : 'roadmap',
+    mapTypeId: mapView === "satellite" ? "hybrid" : "roadmap",
     styles: [
       {
         featureType: "poi",
         elementType: "labels",
-        stylers: [{ visibility: "off" }]
+        stylers: [{ visibility: "off" }],
       },
       {
         featureType: "transit",
         elementType: "labels",
-        stylers: [{ visibility: "off" }]
+        stylers: [{ visibility: "off" }],
       },
       {
         featureType: "road",
         elementType: "labels.icon",
-        stylers: [{ visibility: "off" }]
-      }
-    ]
+        stylers: [{ visibility: "off" }],
+      },
+    ],
   };
 
   return (
     <div className="w-full h-full relative">
       <GoogleMap
-        mapContainerStyle={{ width: '100%', height: '100%' }}
+        mapContainerStyle={{ width: "100%", height: "100%" }}
         center={currentLocation || { lat: 0, lng: 0 }}
         zoom={14}
         onLoad={onLoad}
@@ -187,8 +227,8 @@ const MapComponent: React.FC<MapComponentProps> = ({
           <Marker
             position={currentLocation}
             icon={{
-              url: 'https://maps.google.com/mapfiles/ms/icons/blue-dot.png',
-              scaledSize: new google.maps.Size(32, 32)
+              url: "https://maps.google.com/mapfiles/ms/icons/blue-dot.png",
+              scaledSize: new google.maps.Size(32, 32),
             }}
             zIndex={1000}
           />
@@ -199,8 +239,8 @@ const MapComponent: React.FC<MapComponentProps> = ({
           <Marker
             position={destination}
             icon={{
-              url: 'https://maps.google.com/mapfiles/ms/icons/red-dot.png',
-              scaledSize: new google.maps.Size(32, 32)
+              url: "https://maps.google.com/mapfiles/ms/icons/red-dot.png",
+              scaledSize: new google.maps.Size(32, 32),
             }}
             zIndex={1000}
           />
@@ -213,11 +253,11 @@ const MapComponent: React.FC<MapComponentProps> = ({
             options={{
               suppressMarkers: true,
               polylineOptions: {
-                strokeColor: '#4285F4',
+                strokeColor: "#4285F4",
                 strokeWeight: 5,
                 strokeOpacity: 0.8,
-                zIndex: 1
-              }
+                zIndex: 1,
+              },
             }}
           />
         )}
@@ -227,8 +267,8 @@ const MapComponent: React.FC<MapComponentProps> = ({
           <Marker
             position={route[currentStepIndex].coordinates}
             icon={{
-              url: 'https://maps.google.com/mapfiles/ms/icons/green-dot.png',
-              scaledSize: new google.maps.Size(40, 40)
+              url: "https://maps.google.com/mapfiles/ms/icons/green-dot.png",
+              scaledSize: new google.maps.Size(40, 40),
             }}
             zIndex={1001}
           />
@@ -237,14 +277,20 @@ const MapComponent: React.FC<MapComponentProps> = ({
         {/* Progress Polyline (shows completed route) */}
         {isNavigating && currentStepIndex > 0 && (
           <Polyline
-            path={route.slice(0, currentStepIndex + 1).map(step => (
-              new google.maps.LatLng(step.coordinates.lat, step.coordinates.lng)
-            ))}
+            path={route
+              .slice(0, currentStepIndex + 1)
+              .map(
+                step =>
+                  new google.maps.LatLng(
+                    step.coordinates.lat,
+                    step.coordinates.lng
+                  )
+              )}
             options={{
-              strokeColor: '#34A853',
+              strokeColor: "#34A853",
               strokeWeight: 5,
               strokeOpacity: 0.8,
-              zIndex: 2
+              zIndex: 2,
             }}
           />
         )}
@@ -255,13 +301,13 @@ const MapComponent: React.FC<MapComponentProps> = ({
         {/* Zoom Controls */}
         <Card className="p-2 bg-white shadow-lg border-0 rounded-xl">
           <div className="flex flex-col space-y-2">
-            <button 
+            <button
               onClick={handleZoomIn}
               className="w-10 h-10 bg-white hover:bg-gray-50 rounded-lg flex items-center justify-center text-lg font-bold transition-colors shadow-sm border border-gray-200"
             >
               +
             </button>
-            <button 
+            <button
               onClick={handleZoomOut}
               className="w-10 h-10 bg-white hover:bg-gray-50 rounded-lg flex items-center justify-center text-lg font-bold transition-colors shadow-sm border border-gray-200"
             >
@@ -272,11 +318,11 @@ const MapComponent: React.FC<MapComponentProps> = ({
 
         {/* Map View Toggle */}
         <Card className="p-2 bg-white shadow-lg border-0 rounded-xl">
-          <button 
+          <button
             onClick={handleMapViewChange}
             className="w-10 h-10 bg-white hover:bg-gray-50 rounded-lg flex items-center justify-center text-sm font-medium transition-colors shadow-sm border border-gray-200"
           >
-            {mapView === 'roadmap' ? 'Sat' : 'Map'}
+            {mapView === "roadmap" ? "Sat" : "Map"}
           </button>
         </Card>
       </div>
