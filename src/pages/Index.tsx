@@ -25,9 +25,9 @@ interface TransportStep {
   notes: string;
 }
 
-interface TransportRoute {
-  routeA: TransportStep[];
-  routeB: TransportStep[];
+interface TransportRouteResponse {
+  routesA: TransportStep[];
+  routesB: TransportStep[];
 }
 interface Location {
   lat: number;
@@ -60,9 +60,8 @@ const Index = () => {
   const [mapView, setMapView] = useState<"roadmap" | "satellite">("roadmap");
   const [showRoutePanel, setShowRoutePanel] = useState(false);
   const { toast } = useToast();
-  const [transportRoutes, setTransportRoutes] = useState<TransportRoute | null>(
-    null
-  );
+  const [transportRoutes, setTransportRoutes] =
+    useState<TransportRouteResponse | null>(null);
   const [selectedRoute, setSelectedRoute] = useState<"routeA" | "routeB">(
     "routeA"
   );
@@ -97,51 +96,131 @@ const Index = () => {
     }
   }, [toast]);
 
-  useEffect(() => {
-  if (currentLocation && destination) {
-    const payload = [
+  const MOCK_TRANSPORT_ROUTES: TransportRouteResponse = {
+    routesA: [
       {
-        "start-name": currentLocation.name || "",
-        "start-long": currentLocation.lng,
-        "start-lat": currentLocation.lat,
-        "stop-name": destination.name || "",
-        "stop-long": destination.lng,
-        "stop-lat": destination.lat,
+        start: "Sabo Market",
+        start_lat: "6.5194",
+        start_long: "3.3792",
+        stop: "Yaba Market",
+        stop_lat: "6.5149",
+        stop_long: "3.3793",
+        price: "100",
+        type_of_vehicle: "danfo",
+        notes: "Board yellow 'Yaba-Ojuelegba' Danfo",
       },
-    ];
-    
+      {
+        start: "Yaba Market",
+        start_lat: "6.5149",
+        start_long: "3.3793",
+        stop: "Obanikoro",
+        stop_lat: "6.5492",
+        stop_long: "3.3817",
+        price: "150",
+        type_of_vehicle: "danfo",
+        notes: "Transfer to 'Ikeja' Danfo (yellow/black stripes)",
+      },
+      {
+        start: "Obanikoro",
+        start_lat: "6.5492",
+        start_long: "3.3817",
+        stop: "Palmgrove",
+        stop_lat: "6.5531",
+        stop_long: "3.3845",
+        price: "0",
+        type_of_vehicle: "danfo",
+        notes: "Stay in same vehicle",
+      },
+      {
+        start: "Palmgrove",
+        start_lat: "6.5531",
+        start_long: "3.3845",
+        stop: "Ikeja Underbridge",
+        stop_lat: "6.5874",
+        stop_long: "3.3421",
+        price: "50",
+        type_of_vehicle: "danfo",
+        notes: "Final stop (alight at LASMA office)",
+      },
+    ],
+    routesB: [
+      {
+        start: "Sabo Market",
+        start_lat: "6.5194",
+        start_long: "3.3792",
+        stop: "Costain BRT Terminal",
+        stop_lat: "6.4923",
+        stop_long: "3.3789",
+        price: "300",
+        type_of_vehicle: "BRT",
+        notes: "Board blue 'CMS-Abule Egba' BRT (Cowry card required)",
+      },
+      {
+        start: "Costain BRT Terminal",
+        start_lat: "6.4923",
+        start_long: "3.3789",
+        stop: "Oshodi BRT Terminal",
+        stop_lat: "6.5218",
+        stop_long: "3.3356",
+        price: "0",
+        type_of_vehicle: "BRT",
+        notes: "Free transfer to 'Oshodi-Ikeja' BRT",
+      },
+      {
+        start: "Oshodi BRT Terminal",
+        start_lat: "6.5218",
+        start_long: "3.3356",
+        stop: "Ikeja Underbridge",
+        stop_lat: "6.5874",
+        stop_long: "3.3421",
+        price: "200",
+        type_of_vehicle: "danfo",
+        notes: "Board 'Ikeja Underbridge' Danfo (last stop)",
+      },
+    ],
+  };
+
+  // Then update your API useEffect:
+  useEffect(() => {
+    if (currentLocation && destination) {
+      const payload = [
+        {
+          "start-name": currentLocation.name || "",
+          "start-long": currentLocation.lng,
+          "start-lat": currentLocation.lat,
+          "stop-name": destination.name || "",
+          "stop-long": destination.lng,
+          "stop-lat": destination.lat,
+        },
+      ];
+
       fetch("https://c4882168-00d8-4fc6-8900-6af6c0bec77c.mock.pstmn.io", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    })
-      .then(res => {
-        if (!res.ok) {
-          throw new Error(`HTTP error! status: ${res.status}`);
-        }
-        return res.json();
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
       })
-      .then(data => {
-        setTransportRoutes({
-          routeA: data.routesA || [],
-          routeB: data.routesB || []
+        .then(res => {
+          if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+          return res.json();
+        })
+        .then((data: TransportRouteResponse) => {
+          setTransportRoutes(data);
+          toast({
+            title: "Transport routes loaded",
+            description: "Found multiple route options",
+          });
+        })
+        .catch(error => {
+          console.log("Using mock transport data due to API error:", error);
+          setTransportRoutes(MOCK_TRANSPORT_ROUTES);
+          toast({
+            title: "Using offline transport data",
+            description: "Showing sample transport routes",
+            variant: "default",
+          });
         });
-      })
-      .catch(error => {
-        console.error("Error fetching transport routes:", error);
-        // Set empty routes when API fails
-        setTransportRoutes({
-          routeA: [],
-          routeB: []
-        });
-        toast({
-          title: "Transport routes unavailable",
-          description: "Showing default route options",
-          variant: "destructive",
-        });
-      });
-  }
-}, [currentLocation, destination, toast]);
+    }
+  }, [currentLocation, destination, toast]);
 
   if (loadError) {
     return (
@@ -160,40 +239,74 @@ const Index = () => {
   const convertTransportToSteps = (
     transportSteps: TransportStep[]
   ): RouteStep[] => {
-    return transportSteps.map((step, index) => ({
-      instruction: `Take ${step.type_of_vehicle} from ${step.start} to ${step.stop}. ${step.notes}`,
-      distance: "N/A", // Could calculate this if needed
-      duration: "N/A", // Could estimate this if needed
-      coordinates: {
-        lat: parseFloat(step.stop_lat),
-        lng: parseFloat(step.stop_long),
-      },
-      maneuver: index === transportSteps.length - 1 ? "arrive" : "straight",
-    }));
+    return transportSteps.map((step, index) => {
+      const isLastStep = index === transportSteps.length - 1;
+      return {
+        instruction: `${step.type_of_vehicle.toUpperCase()}: ${step.start} → ${
+          step.stop
+        }`,
+        distance: `${step.price} NGN`,
+        duration: "N/A", // Could be calculated if you have time estimates
+        coordinates: {
+          lat: parseFloat(isLastStep ? step.stop_lat : step.start_lat),
+          lng: parseFloat(isLastStep ? step.stop_long : step.start_long),
+        },
+        maneuver: isLastStep ? "arrive" : "straight",
+        notes: step.notes, // Adding notes to the step
+      };
+    });
   };
-  const getTransportRouteCoordinates = (steps: TransportStep[]) => {
-    return steps.map(step => ({
+
+  const getTransportRouteCoordinates = (steps: TransportStep[] | undefined): Location[] => {
+  const coordinates: Location[] = [];
+
+  if (!steps) {
+    return coordinates; // Return empty array if steps is undefined
+  }
+
+  steps.forEach(step => {
+    coordinates.push({
       lat: parseFloat(step.start_lat),
       lng: parseFloat(step.start_long),
-    }));
-  };
+      address: step.start,
+    });
+    coordinates.push({
+      lat: parseFloat(step.stop_lat),
+      lng: parseFloat(step.stop_long),
+      address: step.stop,
+    });
+  });
+
+  return coordinates;
+};
   const calculateRoute = async (start: Location, end: Location) => {
     try {
       console.log("Calculating route from", start, "to", end);
 
-      // Use Google Directions API
+      // First check if we have transport routes to display instead
+      if (transportRoutes) {
+        const routeSteps =
+          selectedRoute === "routeA"
+            ? transportRoutes.routesA
+            : transportRoutes.routesB;
+        setRoute(convertTransportToSteps(routeSteps));
+        setCurrentStepIndex(0);
+        return;
+      }
+
+      // Only use Google Directions API if we don't have transport routes
       const response = await fetch(
         `https://maps.googleapis.com/maps/api/directions/json?origin=${start.lat},${start.lng}&destination=${end.lat},${end.lng}&key=${GOOGLE_API_KEY}&alternatives=false`
       );
 
       if (!response.ok) {
-        throw new Error("Failed to get directions");
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
 
       const data = await response.json();
 
       if (data.status !== "OK" || !data.routes.length) {
-        throw new Error("No routes found");
+        throw new Error(data.error_message || "No routes found");
       }
 
       const route = data.routes[0];
@@ -243,7 +356,18 @@ const Index = () => {
     } catch (error) {
       console.error("Error calculating route:", error);
 
-      // Fallback to mock route if API fails
+      // If we have transport routes, use those instead of the fallback
+      if (transportRoutes) {
+        const routeSteps =
+          selectedRoute === "routeA"
+            ? transportRoutes.routesA
+            : transportRoutes.routesB;
+        setRoute(convertTransportToSteps(routeSteps));
+        setCurrentStepIndex(0);
+        return;
+      }
+
+      // Fallback to mock route if all else fails
       const steps: RouteStep[] = [
         {
           instruction: "Head north on your current street",
@@ -252,34 +376,7 @@ const Index = () => {
           coordinates: start,
           maneuver: "straight",
         },
-        {
-          instruction: "Turn right at the junction onto Main Street",
-          distance: "0.5 miles",
-          duration: "2 mins",
-          coordinates: { lat: start.lat + 0.002, lng: start.lng + 0.001 },
-          maneuver: "turn-right",
-        },
-        {
-          instruction: "Continue straight through the traffic light",
-          distance: "0.8 miles",
-          duration: "3 mins",
-          coordinates: { lat: start.lat + 0.005, lng: start.lng + 0.003 },
-          maneuver: "straight",
-        },
-        {
-          instruction: "Turn left at Oak Street junction",
-          distance: "0.3 miles",
-          duration: "1 min",
-          coordinates: { lat: start.lat + 0.008, lng: start.lng + 0.002 },
-          maneuver: "turn-left",
-        },
-        {
-          instruction: "Arrive at your destination on the right",
-          distance: "0.1 miles",
-          duration: "30 secs",
-          coordinates: end,
-          maneuver: "arrive",
-        },
+        // ... rest of fallback steps
       ];
 
       setRoute(steps);
@@ -362,7 +459,7 @@ const Index = () => {
               transportRoute={
                 selectedRoute && transportRoutes
                   ? getTransportRouteCoordinates(transportRoutes[selectedRoute])
-                  : null
+                  : undefined
               }
             />
             {/* Search Panel */}
@@ -376,7 +473,7 @@ const Index = () => {
               </div>
             </Card>
             {/* Transport Options Panel */}
-            {showRoutePanel && (
+            {showRoutePanel && transportRoutes && (
               <Card className="absolute bottom-6 left-6 w-80 bg-white shadow-xl border-0 rounded-2xl overflow-hidden z-10">
                 <div className="p-6">
                   <div className="flex items-center justify-between mb-4">
@@ -412,17 +509,17 @@ const Index = () => {
                             Danfo Route
                           </div>
                           <div className="text-sm text-gray-600">
-                            {transportRoutes?.routeA.length || 0} transfers
+                            {transportRoutes.routesA.length} transfers
                           </div>
                         </div>
                       </div>
                       <div className="text-right">
                         <div className="font-bold text-green-600">
                           ₦
-                          {transportRoutes?.routeA.reduce(
+                          {transportRoutes.routesA.reduce(
                             (sum, step) => sum + parseInt(step.price),
                             0
-                          ) || "100-250"}
+                          )}
                         </div>
                         <div className="text-xs text-gray-500">Total cost</div>
                       </div>
@@ -446,23 +543,23 @@ const Index = () => {
                             BRT Route
                           </div>
                           <div className="text-sm text-gray-600">
-                            {transportRoutes?.routeB.length || 0} transfers
+                            {transportRoutes.routesB.length} transfers
                           </div>
                         </div>
                       </div>
                       <div className="text-right">
                         <div className="font-bold text-blue-600">
                           ₦
-                          {transportRoutes?.routeB.reduce(
+                          {transportRoutes.routesB.reduce(
                             (sum, step) => sum + parseInt(step.price),
                             0
-                          ) || "300-500"}
+                          )}
                         </div>
                         <div className="text-xs text-gray-500">Total cost</div>
                       </div>
                     </div>
 
-                    {/* Taxi Option (remains the same) */}
+                    {/* Taxi Option */}
                     <div className="flex items-center justify-between p-3 border border-gray-200 rounded-xl hover:bg-gray-50">
                       <div className="flex items-center space-x-3">
                         <div className="w-8 h-8 bg-orange-500 rounded-full flex items-center justify-center">
@@ -488,48 +585,43 @@ const Index = () => {
 
                   <Button
                     onClick={() => {
-                      const route =
+                      const routeSteps =
                         selectedRoute === "routeA"
-                          ? transportRoutes?.routeA
-                          : transportRoutes?.routeB;
-                      if (route) {
-                        setRoute(convertTransportToSteps(route));
-                        startNavigation();
-                      }
+                          ? transportRoutes.routesA
+                          : transportRoutes.routesB;
+                      setRoute(convertTransportToSteps(routeSteps));
+                      startNavigation();
                     }}
                     className="w-full mt-4 bg-green-500 hover:bg-green-600 text-white py-3 rounded-xl font-medium"
                   >
                     Start Navigation
                   </Button>
 
-                  {/* Show route details when a route is selected */}
-                  {selectedRoute && transportRoutes && (
-                    <div className="mt-4 p-3 bg-gray-50 rounded-lg">
-                      <h4 className="font-medium text-sm mb-2">
-                        Route Details:
-                      </h4>
-                      <div className="space-y-2 text-sm">
-                        {(transportRoutes[selectedRoute] || []).map(
-                          (step, index) => (
-                            <div key={index} className="flex items-start">
-                              <div className="w-5 h-5 bg-gray-200 rounded-full flex items-center justify-center mt-0.5 mr-2 flex-shrink-0">
-                                <span className="text-xs">{index + 1}</span>
-                              </div>
-                              <div>
-                                <p className="font-medium">
-                                  {step.type_of_vehicle}: {step.start} to{" "}
-                                  {step.stop}
-                                </p>
-                                <p className="text-gray-600">
-                                  ₦{step.price} - {step.notes}
-                                </p>
-                              </div>
-                            </div>
-                          )
-                        )}
-                      </div>
+                  {/* Route details */}
+                  <div className="mt-4 p-3 bg-gray-50 rounded-lg">
+                    <h4 className="font-medium text-sm mb-2">Route Details:</h4>
+                    <div className="space-y-2 text-sm">
+                      {(selectedRoute === "routeA"
+                        ? transportRoutes.routesA
+                        : transportRoutes.routesB
+                      ).map((step, index) => (
+                        <div key={index} className="flex items-start">
+                          <div className="w-5 h-5 bg-gray-200 rounded-full flex items-center justify-center mt-0.5 mr-2 flex-shrink-0">
+                            <span className="text-xs">{index + 1}</span>
+                          </div>
+                          <div>
+                            <p className="font-medium">
+                              {step.type_of_vehicle}: {step.start} to{" "}
+                              {step.stop}
+                            </p>
+                            <p className="text-gray-600">
+                              ₦{step.price} - {step.notes}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
                     </div>
-                  )}
+                  </div>
                 </div>
               </Card>
             )}

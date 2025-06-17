@@ -14,7 +14,7 @@ interface Location {
 interface SearchPanelProps {
   onDestinationSelect: (location: Location) => void;
   currentLocation: Location | null;
-  isLoaded?: boolean; // Optional, but recommended to pass from parent
+  isLoaded?: boolean; 
 }
 
 const SearchPanel: React.FC<SearchPanelProps> = ({

@@ -33,8 +33,6 @@ interface MapComponentProps {
   currentStepIndex: number;
   isNavigating: boolean;
   mapView: "roadmap" | "satellite";
-    transportRoute?: Location[];
-
 }
 
 const MapComponent: React.FC<MapComponentProps> = ({
