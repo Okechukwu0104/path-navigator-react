@@ -77,7 +77,7 @@ const MapComponent: React.FC<MapComponentProps> = ({
     }
     const directionsService = new google.maps.DirectionsService();
     const waypoints = route
-      .slice(1, -1) // Skip first and last points
+      .slice(1, -1) 
       .map(step => ({
         location: new google.maps.LatLng(
           step.coordinates.lat,
@@ -119,7 +119,7 @@ const MapComponent: React.FC<MapComponentProps> = ({
         }
       }
     );
-  }, [isLoaded, currentLocation, destination, route]);
+  }, [isLoaded, currentLocation, destination, route, loadError]);
 
   useEffect(() => {
     calculateRoute();

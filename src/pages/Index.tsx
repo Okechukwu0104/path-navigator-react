@@ -46,7 +46,6 @@ interface RouteStep {
 
 const GOOGLE_API_KEY = "AIzaSyCsIxQ-fyrN_cOw46dFVWGMBKfI93LoVe8";
 
-// Lagos, Nigeria coordinates for better default location
 const LAGOS_DEFAULT_LOCATION = { lat: 6.5244, lng: 3.3792 };
 
 const Index = () => {
@@ -254,7 +253,7 @@ const Index = () => {
         stop_lat: "6.5149",
         stop_long: "3.3793",
         price: "100",
-        type_of_vehicle: "danfo",
+        type_of_vehicle: "BIKE",
         notes: "Board yellow 'Yaba-Ojuelegba' Danfo",
       },
       {
@@ -265,7 +264,7 @@ const Index = () => {
         stop_lat: "6.5492",
         stop_long: "3.3817",
         price: "150",
-        type_of_vehicle: "danfo",
+        type_of_vehicle: "KEKE",
         notes: "Transfer to 'Ikeja' Danfo (yellow/black stripes)",
       },
       {
@@ -347,7 +346,7 @@ const Index = () => {
 
       console.log("Fetching transport routes with payload:", payload);
 
-      fetch("https://c4882168-00d8-4fc6-8900-6af6c0bec77c.mock.pstmn.io", {
+      fetch("https://7d215de4-09a0-4079-9760-fb0575c4e9ff.mock.pstmn.io/routin", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -816,46 +815,20 @@ const Index = () => {
                   >
                     Start Navigation
                   </Button>
-
-                  {/* Route details */}
-                  <div className="mt-4 p-3 bg-gray-50 rounded-lg">
-                    <h4 className="font-medium text-sm mb-2">Route Details:</h4>
-                    <div className="space-y-2 text-sm">
-                      {(selectedRoute === "routeA"
-                        ? transportRoutes.routesA
-                        : transportRoutes.routesB
-                      ).map((step, index) => (
-                        <div key={index} className="flex items-start">
-                          <div className="w-5 h-5 bg-gray-200 rounded-full flex items-center justify-center mt-0.5 mr-2 flex-shrink-0">
-                            <span className="text-xs">{index + 1}</span>
-                          </div>
-                          <div>
-                            <p className="font-medium">
-                              {step.type_of_vehicle}: {step.start} to{" "}
-                              {step.stop}
-                            </p>
-                            <p className="text-gray-600">
-                              ₦{step.price} - {step.notes}
-                            </p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
                 </div>
               </Card>
             )}
 
             {/* Navigation Controls */}
             {isNavigating && (
-              <Card className="absolute top-6 right-6 w-80 bg-white shadow-xl border-0 rounded-2xl overflow-hidden z-10">
-                <div className="p-6">
+              <Card className="absolute top-16 right-6 w-90 bg-white shadow-xl border-0 rounded-2xl overflow-hidden z-10">
+                <div className="p-2">
                   <RouteInfo
                     route={
                       selectedRoute === "routeA"
                         ? transportRoutes.routesA
                         : transportRoutes.routesB
-                    }
+                    } 
                     currentStepIndex={currentStepIndex}
                     isNavigating={isNavigating}
                     onNextStep={() =>

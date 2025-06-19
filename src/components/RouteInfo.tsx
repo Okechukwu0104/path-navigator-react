@@ -1,7 +1,15 @@
-import React from 'react';
-import { Card } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { ChevronLeft, ChevronRight, Bus, Car, PersonStanding } from 'lucide-react';
+import React from "react";
+import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import {
+  ChevronLeft,
+  ChevronRight,
+  Bus,
+  Car,
+  PersonStanding,
+  Bike,
+  Truck,
+} from "lucide-react";
 
 interface TransportStep {
   start: string;
@@ -19,22 +27,27 @@ interface RouteInfoProps {
   onPrevStep: () => void;
 }
 
-const RouteInfo: React.FC<RouteInfoProps> = ({ 
-  route, 
-  currentStepIndex, 
+const RouteInfo: React.FC<RouteInfoProps> = ({
+  route,
+  currentStepIndex,
   isNavigating,
   onNextStep,
-  onPrevStep
+  onPrevStep,
 }) => {
   const getTransportIcon = (type: string) => {
-    switch(type.toLowerCase()) {
-      case 'danfo':
-      case 'brt':
-      case 'bus':
+    switch (type.toLowerCase()) {
+      case "danfo":
+      case "brt":
+      case "korokpe":
+      case "bus":
         return <Bus className="h-6 w-6" />;
-      case 'taxi':
-      case 'cab':
+      case "taxi":
+      case "cab":
         return <Car className="h-6 w-6" />;
+      case "bike":
+        return <Bike className="h-6 w-6" />;
+      case "keke":
+        return <Truck className="h-6 w-6" />;
       default:
         return <PersonStanding className="h-6 w-6" />;
     }
@@ -78,13 +91,16 @@ const RouteInfo: React.FC<RouteInfoProps> = ({
           <div className="p-3 bg-blue-100 rounded-full mb-3">
             {getTransportIcon(currentStep.type_of_vehicle)}
           </div>
-          
+
           {/* Route Line */}
           <div className="relative w-full flex justify-center mb-3">
             <div className="absolute h-12 w-px bg-gray-300"></div>
-            <div className="absolute h-6 w-px bg-blue-500" style={{ top: 0 }}></div>
+            <div
+              className="absolute h-6 w-px bg-blue-500"
+              style={{ top: 0 }}
+            ></div>
           </div>
-          
+
           {/* Start and Stop Points */}
           <div className="w-full flex justify-between px-4">
             <div className="text-center">
@@ -102,19 +118,20 @@ const RouteInfo: React.FC<RouteInfoProps> = ({
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center space-x-2">
             {getTransportIcon(currentStep.type_of_vehicle)}
-            <span className="font-medium capitalize">{currentStep.type_of_vehicle}</span>
+            <span className="font-medium capitalize">
+              {currentStep.type_of_vehicle}
+            </span>
           </div>
           <Badge variant="default" className="bg-blue-500">
             ₦{currentStep.price}
           </Badge>
         </div>
-        
-        <div className="text-sm text-gray-700 mb-4">
-          {currentStep.notes}
-        </div>
-        
+
+        <div className="text-sm text-gray-700 mb-4">{currentStep.notes}</div>
+
         <div className="text-xs text-gray-500">
-          Board at <span className="font-medium">{currentStep.start}</span> and alight at <span className="font-medium">{currentStep.stop}</span>
+          Board at <span className="font-medium">{currentStep.start}</span> and
+          alight at <span className="font-medium">{currentStep.stop}</span>
         </div>
       </Card>
 
@@ -123,24 +140,34 @@ const RouteInfo: React.FC<RouteInfoProps> = ({
         <button
           onClick={onPrevStep}
           disabled={currentStepIndex === 0}
-          className={`p-2 rounded-full ${currentStepIndex === 0 ? 'text-gray-300' : 'text-gray-700 hover:bg-gray-100'}`}
+          className={`p-2 rounded-full ${
+            currentStepIndex === 0
+              ? "text-gray-300"
+              : "text-gray-700 hover:bg-gray-100"
+          }`}
         >
           <ChevronLeft className="h-6 w-6" />
         </button>
-        
+
         <div className="flex space-x-1">
           {route.map((_, index) => (
-            <div 
+            <div
               key={index}
-              className={`h-2 w-2 rounded-full ${index === currentStepIndex ? 'bg-blue-500' : 'bg-gray-300'}`}
+              className={`h-2 w-2 rounded-full ${
+                index === currentStepIndex ? "bg-blue-500" : "bg-gray-300"
+              }`}
             />
           ))}
         </div>
-        
+
         <button
           onClick={onNextStep}
           disabled={currentStepIndex === route.length - 1}
-          className={`p-2 rounded-full ${currentStepIndex === route.length - 1 ? 'text-gray-300' : 'text-gray-700 hover:bg-gray-100'}`}
+          className={`p-2 rounded-full ${
+            currentStepIndex === route.length - 1
+              ? "text-gray-300"
+              : "text-gray-700 hover:bg-gray-100"
+          }`}
         >
           <ChevronRight className="h-6 w-6" />
         </button>

@@ -26,7 +26,7 @@ const NavigationControls: React.FC<NavigationControlsProps> = ({
   };
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-3  ">
       {/* Main Navigation Control */}
       {!isNavigating ? (
         <Button 
@@ -41,10 +41,10 @@ const NavigationControls: React.FC<NavigationControlsProps> = ({
         <Button 
           onClick={onStopNavigation}
           variant="destructive"
-          className="w-full py-3"
+          className="flex items-center justify-self-center w-30 bg-blue-500 text-red-500 py-3 hover:bg-red-600 text-white py-3"
           size="lg"
         >
-          <Square className="h-5 w-5 mr-2" />
+          <Square className="h-5 w-2 mr-2 " />
           Stop Navigation
         </Button>
       )}
