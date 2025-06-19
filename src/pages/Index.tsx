@@ -1,5 +1,4 @@
-// pages/Index.tsx
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Navigation, MapPin, Route } from "lucide-react";
@@ -9,9 +8,8 @@ import RouteInfo from "@/components/RouteInfo";
 import NavigationControls from "@/components/NavigationControls";
 import { useToast } from "@/hooks/use-toast";
 import { useLoadScript } from "@react-google-maps/api";
-// import { UserButton } from "@clerk/clerk-react"; // REMOVE THIS LINE
 
-const libraries = ["places", "geometry"];
+const libraries = ["places", "geometry"] as const;
 
 interface TransportStep {
   start: string;
@@ -29,6 +27,7 @@ interface TransportRouteResponse {
   routesA: TransportStep[];
   routesB: TransportStep[];
 }
+
 interface Location {
   lat: number;
   lng: number;
@@ -42,9 +41,13 @@ interface RouteStep {
   duration: string;
   coordinates: Location;
   maneuver: string;
+  notes?: string;
 }
 
 const GOOGLE_API_KEY = "AIzaSyCsIxQ-fyrN_cOw46dFVWGMBKfI93LoVe8";
+
+// Lagos, Nigeria coordinates for better default location
+const LAGOS_DEFAULT_LOCATION = { lat: 6.5244, lng: 3.3792 };
 
 const Index = () => {
   const { isLoaded, loadError } = useLoadScript({
@@ -59,6 +62,9 @@ const Index = () => {
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [mapView, setMapView] = useState<"roadmap" | "satellite">("roadmap");
   const [showRoutePanel, setShowRoutePanel] = useState(false);
+  const [locationError, setLocationError] = useState<string | null>(null);
+  const [isLocating, setIsLocating] = useState(false);
+  const [locationAccuracy, setLocationAccuracy] = useState<number | null>(null);
   const { toast } = useToast();
   const [transportRoutes, setTransportRoutes] =
     useState<TransportRouteResponse | null>(null);
@@ -66,35 +72,177 @@ const Index = () => {
     "routeA"
   );
 
+  // Use refs to prevent multiple simultaneous location requests
+  const locationWatchId = useRef<number | null>(null);
+  const isLocationRequestInProgress = useRef(false);
+
+  // Get user's current location with improved stability
   useEffect(() => {
-    // Get user's current location
-    if (navigator.geolocation) {
+    const getCurrentLocation = () => {
+      if (!navigator.geolocation) {
+        console.error("Geolocation is not supported by this browser");
+        setCurrentLocation(LAGOS_DEFAULT_LOCATION);
+        setLocationError("Geolocation not supported");
+        setIsLocating(false);
+        toast({
+          title: "Geolocation not supported",
+          description: "Using Lagos, Nigeria as default location.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Prevent multiple simultaneous requests
+      if (isLocationRequestInProgress.current) {
+        return;
+      }
+
+      setIsLocating(true);
+      isLocationRequestInProgress.current = true;
+
+      const options = {
+        enableHighAccuracy: true,
+        timeout: 15000, // Increased timeout
+        maximumAge: 30000, // Reduced maximum age for more current location
+      };
+
+      const handleSuccess = (position: GeolocationPosition) => {
+        const location = {
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+        };
+
+        console.log("Location found:", location);
+        console.log("Accuracy:", position.coords.accuracy, "meters");
+
+        setCurrentLocation(location);
+        setLocationAccuracy(position.coords.accuracy);
+        setLocationError(null);
+        setIsLocating(false);
+        isLocationRequestInProgress.current = false;
+
+        toast({
+          title: "Location found",
+          description: `Accuracy: ${Math.round(position.coords.accuracy)}m`,
+        });
+      };
+
+      const handleError = (error: GeolocationPositionError) => {
+        console.error("Geolocation error:", error);
+        let errorMessage = "Unknown location error";
+
+        switch (error.code) {
+          case error.PERMISSION_DENIED:
+            errorMessage = "Location access denied by user";
+            break;
+          case error.POSITION_UNAVAILABLE:
+            errorMessage = "Location information unavailable";
+            break;
+          case error.TIMEOUT:
+            errorMessage = "Location request timed out";
+            break;
+        }
+
+        setLocationError(errorMessage);
+        setCurrentLocation(LAGOS_DEFAULT_LOCATION);
+        setIsLocating(false);
+        isLocationRequestInProgress.current = false;
+
+        toast({
+          title: "Location access failed",
+          description: `${errorMessage}. Using Lagos, Nigeria as default.`,
+          variant: "destructive",
+        });
+      };
+
+      // First, try to get current position
       navigator.geolocation.getCurrentPosition(
+        handleSuccess,
+        handleError,
+        options
+      );
+
+      // Then set up continuous watching for better accuracy
+      if (locationWatchId.current) {
+        navigator.geolocation.clearWatch(locationWatchId.current);
+      }
+
+      locationWatchId.current = navigator.geolocation.watchPosition(
         position => {
-          const location = {
+          const newLocation = {
             lat: position.coords.latitude,
             lng: position.coords.longitude,
           };
-          setCurrentLocation(location);
-          toast({
-            title: "Location found",
-            description: "Your current location has been detected.",
-          });
+
+          // Only update if the location has changed significantly (> 10 meters)
+          if (currentLocation) {
+            const distance = calculateDistance(
+              currentLocation.lat,
+              currentLocation.lng,
+              newLocation.lat,
+              newLocation.lng
+            );
+
+            if (distance > 10) {
+              // 10 meters threshold
+              console.log(
+                "Location updated:",
+                newLocation,
+                "Distance moved:",
+                distance
+              );
+              setCurrentLocation(newLocation);
+              setLocationAccuracy(position.coords.accuracy);
+            }
+          } else {
+            setCurrentLocation(newLocation);
+            setLocationAccuracy(position.coords.accuracy);
+          }
         },
         error => {
-          console.error("Error getting location:", error);
-
-          setCurrentLocation({ lat: 37.7749, lng: -122.4194 });
-          toast({
-            title: "Location access denied",
-            description:
-              "Using default location. Please enable location services for better experience.",
-            variant: "destructive",
-          });
+          console.warn("Watch position error:", error);
+          // Don't show error for watch position failures, just log them
+        },
+        {
+          enableHighAccuracy: true,
+          maximumAge: 10000,
+          timeout: 10000,
         }
       );
-    }
-  }, [toast]);
+    };
+
+    getCurrentLocation();
+
+    // Cleanup function
+    return () => {
+      if (locationWatchId.current) {
+        navigator.geolocation.clearWatch(locationWatchId.current);
+        locationWatchId.current = null;
+      }
+      isLocationRequestInProgress.current = false;
+    };
+  }, []); // Empty dependency array to run only once
+
+  // Helper function to calculate distance between two points
+  const calculateDistance = (
+    lat1: number,
+    lon1: number,
+    lat2: number,
+    lon2: number
+  ): number => {
+    const R = 6371e3; // Earth's radius in meters
+    const φ1 = (lat1 * Math.PI) / 180;
+    const φ2 = (lat2 * Math.PI) / 180;
+    const Δφ = ((lat2 - lat1) * Math.PI) / 180;
+    const Δλ = ((lon2 - lon1) * Math.PI) / 180;
+
+    const a =
+      Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+      Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+    return R * c; // Distance in meters
+  };
 
   const MOCK_TRANSPORT_ROUTES: TransportRouteResponse = {
     routesA: [
@@ -138,7 +286,7 @@ const Index = () => {
         stop: "Ikeja Underbridge",
         stop_lat: "6.5874",
         stop_long: "3.3421",
-        price: "50",
+        price: "500",
         type_of_vehicle: "danfo",
         notes: "Final stop (alight at LASMA office)",
       },
@@ -180,19 +328,24 @@ const Index = () => {
     ],
   };
 
-  // Then update your API useEffect:
+  // Load transport routes when locations are set
   useEffect(() => {
     if (currentLocation && destination) {
       const payload = [
         {
-          "start-name": currentLocation.name || "",
+          "start-name":
+            currentLocation.name ||
+            currentLocation.address ||
+            "Current Location",
           "start-long": currentLocation.lng,
           "start-lat": currentLocation.lat,
-          "stop-name": destination.name || "",
+          "stop-name": destination.name || destination.address || "Destination",
           "stop-long": destination.lng,
           "stop-lat": destination.lat,
         },
       ];
+
+      console.log("Fetching transport routes with payload:", payload);
 
       fetch("https://c4882168-00d8-4fc6-8900-6af6c0bec77c.mock.pstmn.io", {
         method: "POST",
@@ -204,6 +357,7 @@ const Index = () => {
           return res.json();
         })
         .then((data: TransportRouteResponse) => {
+          console.log("Transport routes received:", data);
           setTransportRoutes(data);
           toast({
             title: "Transport routes loaded",
@@ -232,10 +386,14 @@ const Index = () => {
           <p className="text-sm text-gray-600 mt-2">
             Please check your internet connection and try again.
           </p>
+          <p className="text-xs text-gray-500 mt-2">
+            Error: {loadError.message}
+          </p>
         </Card>
       </div>
     );
   }
+
   const convertTransportToSteps = (
     transportSteps: TransportStep[]
   ): RouteStep[] => {
@@ -245,118 +403,132 @@ const Index = () => {
         instruction: `${step.type_of_vehicle.toUpperCase()}: ${step.start} → ${
           step.stop
         }`,
-        distance: `${step.price} NGN`,
-        duration: "N/A", // Could be calculated if you have time estimates
+        distance: `₦${step.price}`,
+        duration: "N/A",
         coordinates: {
           lat: parseFloat(isLastStep ? step.stop_lat : step.start_lat),
           lng: parseFloat(isLastStep ? step.stop_long : step.start_long),
+          address: isLastStep ? step.stop : step.start,
         },
         maneuver: isLastStep ? "arrive" : "straight",
-        notes: step.notes, // Adding notes to the step
+        notes: step.notes,
       };
     });
   };
 
-  const getTransportRouteCoordinates = (steps: TransportStep[] | undefined): Location[] => {
-  const coordinates: Location[] = [];
+  const getTransportRouteCoordinates = (
+    steps: TransportStep[] | undefined
+  ): Location[] => {
+    if (!steps || steps.length === 0) {
+      return [];
+    }
 
-  if (!steps) {
-    return coordinates; // Return empty array if steps is undefined
-  }
+    const coordinates: Location[] = [];
 
-  steps.forEach(step => {
-    coordinates.push({
-      lat: parseFloat(step.start_lat),
-      lng: parseFloat(step.start_long),
-      address: step.start,
+    steps.forEach((step, index) => {
+      // Add start point (avoid duplicates)
+      const startCoord = {
+        lat: parseFloat(step.start_lat),
+        lng: parseFloat(step.start_long),
+        address: step.start,
+        name: step.start,
+      };
+
+      // Only add if it's the first step or different from previous stop
+      if (
+        index === 0 ||
+        coordinates[coordinates.length - 1]?.lat !== startCoord.lat
+      ) {
+        coordinates.push(startCoord);
+      }
+
+      // Add stop point
+      coordinates.push({
+        lat: parseFloat(step.stop_lat),
+        lng: parseFloat(step.stop_long),
+        address: step.stop,
+        name: step.stop,
+      });
     });
-    coordinates.push({
-      lat: parseFloat(step.stop_lat),
-      lng: parseFloat(step.stop_long),
-      address: step.stop,
-    });
-  });
 
-  return coordinates;
-};
+    return coordinates;
+  };
+
   const calculateRoute = async (start: Location, end: Location) => {
     try {
       console.log("Calculating route from", start, "to", end);
 
-      // First check if we have transport routes to display instead
+      // Check if we have transport routes to display
       if (transportRoutes) {
         const routeSteps =
           selectedRoute === "routeA"
             ? transportRoutes.routesA
             : transportRoutes.routesB;
-        setRoute(convertTransportToSteps(routeSteps));
+
+        const convertedSteps = convertTransportToSteps(routeSteps);
+        setRoute(convertedSteps);
         setCurrentStepIndex(0);
+
+        console.log("Using transport routes:", convertedSteps);
         return;
       }
 
-      // Only use Google Directions API if we don't have transport routes
-      const response = await fetch(
-        `https://maps.googleapis.com/maps/api/directions/json?origin=${start.lat},${start.lng}&destination=${end.lat},${end.lng}&key=${GOOGLE_API_KEY}&alternatives=false`
-      );
+      // Fallback to Google Directions API
+      const directionsService = new google.maps.DirectionsService();
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
+      const request = {
+        origin: new google.maps.LatLng(start.lat, start.lng),
+        destination: new google.maps.LatLng(end.lat, end.lng),
+        travelMode: google.maps.TravelMode.TRANSIT,
+        transitOptions: {
+          departureTime: new Date(),
+        },
+      };
 
-      const data = await response.json();
+      directionsService.route(request, (result, status) => {
+        if (status === google.maps.DirectionsStatus.OK && result) {
+          const route = result.routes[0];
+          const leg = route.legs[0];
 
-      if (data.status !== "OK" || !data.routes.length) {
-        throw new Error(data.error_message || "No routes found");
-      }
+          const steps: RouteStep[] = leg.steps.map((step, index) => {
+            let maneuver = "straight";
+            const instructions = step.instructions.toLowerCase();
 
-      const route = data.routes[0];
-      const legs = route.legs[0];
+            if (instructions.includes("turn right")) {
+              maneuver = "turn-right";
+            } else if (instructions.includes("turn left")) {
+              maneuver = "turn-left";
+            } else if (instructions.includes("arrive")) {
+              maneuver = "arrive";
+            }
 
-      // Convert Google Directions steps to our format
-      const steps: RouteStep[] = legs.steps.map((step: any, index: number) => {
-        let maneuver = "straight";
-        const instructions = step.html_instructions.toLowerCase();
+            return {
+              instruction: step.instructions.replace(/<[^>]*>/g, ""),
+              distance: step.distance?.text || "N/A",
+              duration: step.duration?.text || "N/A",
+              coordinates: {
+                lat: step.end_location.lat(),
+                lng: step.end_location.lng(),
+              },
+              maneuver,
+            };
+          });
 
-        if (
-          instructions.includes("turn right") ||
-          instructions.includes("right turn")
-        ) {
-          maneuver = "turn-right";
-        } else if (
-          instructions.includes("turn left") ||
-          instructions.includes("left turn")
-        ) {
-          maneuver = "turn-left";
-        } else if (
-          instructions.includes("arrive") ||
-          instructions.includes("destination")
-        ) {
-          maneuver = "arrive";
+          setRoute(steps);
+          setCurrentStepIndex(0);
+
+          toast({
+            title: "Route calculated",
+            description: `Found route with ${steps.length} steps`,
+          });
+        } else {
+          throw new Error(`Directions request failed: ${status}`);
         }
-
-        return {
-          instruction: step.html_instructions.replace(/<[^>]*>/g, ""),
-          distance: step.distance.text,
-          duration: step.duration.text,
-          coordinates: {
-            lat: step.end_location.lat,
-            lng: step.end_location.lng,
-          },
-          maneuver,
-        };
-      });
-
-      setRoute(steps);
-      setCurrentStepIndex(0);
-
-      toast({
-        title: "Route calculated",
-        description: `Found route with ${steps.length} steps (${legs.distance.text}, ${legs.duration.text})`,
       });
     } catch (error) {
       console.error("Error calculating route:", error);
 
-      // If we have transport routes, use those instead of the fallback
+      // Use transport routes if available
       if (transportRoutes) {
         const routeSteps =
           selectedRoute === "routeA"
@@ -367,24 +539,23 @@ const Index = () => {
         return;
       }
 
-      // Fallback to mock route if all else fails
-      const steps: RouteStep[] = [
+      // Final fallback
+      const fallbackSteps: RouteStep[] = [
         {
-          instruction: "Head north on your current street",
-          distance: "0.2 miles",
-          duration: "1 min",
-          coordinates: start,
-          maneuver: "straight",
+          instruction: "Navigate to your destination",
+          distance: "Unknown",
+          duration: "Unknown",
+          coordinates: end,
+          maneuver: "arrive",
         },
-        // ... rest of fallback steps
       ];
 
-      setRoute(steps);
+      setRoute(fallbackSteps);
       setCurrentStepIndex(0);
 
       toast({
-        title: "Route calculated (offline mode)",
-        description: `Using fallback route with ${steps.length} steps`,
+        title: "Route calculated (fallback)",
+        description: "Using basic route information",
         variant: "destructive",
       });
     }
@@ -416,6 +587,7 @@ const Index = () => {
   };
 
   const handleDestinationSelect = (location: Location) => {
+    console.log("Destination selected:", location);
     setDestination(location);
     setShowRoutePanel(true);
     if (currentLocation) {
@@ -423,9 +595,57 @@ const Index = () => {
     }
   };
 
+  const retryLocation = () => {
+    setLocationError(null);
+    setCurrentLocation(null);
+    setIsLocating(true);
+    isLocationRequestInProgress.current = false;
+
+    // Clear existing watch
+    if (locationWatchId.current) {
+      navigator.geolocation.clearWatch(locationWatchId.current);
+      locationWatchId.current = null;
+    }
+
+    // Trigger location detection again
+    const getCurrentLocation = () => {
+      const options = {
+        enableHighAccuracy: true,
+        timeout: 15000,
+        maximumAge: 0, // Force fresh location
+      };
+
+      navigator.geolocation.getCurrentPosition(
+        position => {
+          const location = {
+            lat: position.coords.latitude,
+            lng: position.coords.longitude,
+          };
+          setCurrentLocation(location);
+          setLocationAccuracy(position.coords.accuracy);
+          setIsLocating(false);
+          toast({
+            title: "Location found",
+            description: `Accuracy: ${Math.round(position.coords.accuracy)}m`,
+          });
+        },
+        error => {
+          setCurrentLocation(LAGOS_DEFAULT_LOCATION);
+          setIsLocating(false);
+          toast({
+            title: "Using default location",
+            description: "Lagos, Nigeria set as your location.",
+          });
+        },
+        options
+      );
+    };
+    getCurrentLocation();
+  };
+
   return (
     <div className="h-screen w-full flex bg-white relative overflow-hidden">
-      {/* Map Container - must have explicit dimensions */}
+      {/* Map Container */}
       <div className="flex-1 w-full h-full">
         {!isLoaded ? (
           <div className="w-full h-full flex items-center justify-center bg-gray-100">
@@ -436,18 +656,6 @@ const Index = () => {
           </div>
         ) : (
           <>
-            {/* REMOVE THIS User Button block from Index.tsx
-            <div className="absolute top-4 right-4 z-50">
-              <UserButton
-                appearance={{
-                  elements: {
-                    userButtonBox: "h-10 w-10",
-                    userButtonAvatarBox: "h-full w-full"
-                  }
-                }}
-              />
-            </div>
-            */}
             {/* Main Map Component */}
             <MapComponent
               currentLocation={currentLocation}
@@ -462,6 +670,7 @@ const Index = () => {
                   : undefined
               }
             />
+
             {/* Search Panel */}
             <Card className="absolute top-6 left-6 w-80 bg-white shadow-xl border-0 rounded-2xl overflow-hidden z-10">
               <div className="p-6">
@@ -472,6 +681,7 @@ const Index = () => {
                 />
               </div>
             </Card>
+
             {/* Transport Options Panel */}
             {showRoutePanel && transportRoutes && (
               <Card className="absolute bottom-6 left-6 w-80 bg-white shadow-xl border-0 rounded-2xl overflow-hidden z-10">
@@ -498,7 +708,12 @@ const Index = () => {
                           ? "bg-green-50 border-green-200"
                           : "border-gray-200 hover:bg-gray-50"
                       }`}
-                      onClick={() => setSelectedRoute("routeA")}
+                      onClick={() => {
+                        setSelectedRoute("routeA");
+                        if (currentLocation && destination) {
+                          calculateRoute(currentLocation, destination);
+                        }
+                      }}
                     >
                       <div className="flex items-center space-x-3">
                         <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
@@ -532,7 +747,12 @@ const Index = () => {
                           ? "bg-blue-50 border-blue-200"
                           : "border-gray-200 hover:bg-gray-50"
                       }`}
-                      onClick={() => setSelectedRoute("routeB")}
+                      onClick={() => {
+                        setSelectedRoute("routeB");
+                        if (currentLocation && destination) {
+                          calculateRoute(currentLocation, destination);
+                        }
+                      }}
                     >
                       <div className="flex items-center space-x-3">
                         <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
@@ -625,15 +845,27 @@ const Index = () => {
                 </div>
               </Card>
             )}
-            ////////////////////////////////////////////////
+
             {/* Navigation Controls */}
             {isNavigating && (
               <Card className="absolute top-6 right-6 w-80 bg-white shadow-xl border-0 rounded-2xl overflow-hidden z-10">
                 <div className="p-6">
                   <RouteInfo
-                    route={route}
+                    route={
+                      selectedRoute === "routeA"
+                        ? transportRoutes.routesA
+                        : transportRoutes.routesB
+                    }
                     currentStepIndex={currentStepIndex}
                     isNavigating={isNavigating}
+                    onNextStep={() =>
+                      setCurrentStepIndex(prev =>
+                        Math.min(prev + 1, route.length - 1)
+                      )
+                    }
+                    onPrevStep={() =>
+                      setCurrentStepIndex(prev => Math.max(prev - 1, 0))
+                    }
                   />
                   <div className="mt-4">
                     <NavigationControls
@@ -647,23 +879,52 @@ const Index = () => {
                 </div>
               </Card>
             )}
+
             {/* Current Location Info */}
             {currentLocation && (
               <Card className="absolute bottom-6 right-6 p-4 bg-white/95 backdrop-blur-sm shadow-lg border-0 rounded-2xl z-10">
                 <div className="flex items-center space-x-3 text-sm">
-                  <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse" />
+                  <div
+                    className={`w-3 h-3 rounded-full ${
+                      isLocating
+                        ? "bg-yellow-500 animate-pulse"
+                        : locationError
+                        ? "bg-red-500"
+                        : "bg-green-500"
+                    }`}
+                  />
                   <div>
                     <div className="font-medium text-gray-900">
-                      Current Location
+                      {isLocating ? "Locating..." : "Current Location"}
                     </div>
                     <div className="text-xs text-gray-600">
                       {currentLocation.lat.toFixed(6)},{" "}
                       {currentLocation.lng.toFixed(6)}
                     </div>
+                    {locationAccuracy && (
+                      <div className="text-xs text-green-600">
+                        Accuracy: {Math.round(locationAccuracy)}m
+                      </div>
+                    )}
+                    {locationError && (
+                      <div className="text-xs text-red-500">
+                        {locationError}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={retryLocation}
+                          className="ml-2 h-4 px-2 text-xs"
+                          disabled={isLocating}
+                        >
+                          {isLocating ? "Locating..." : "Retry"}
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 </div>
               </Card>
             )}
+
             {/* Map View Toggle */}
             <div className="absolute top-6 right-6 z-10">
               <div className="flex bg-white rounded-xl shadow-lg overflow-hidden">

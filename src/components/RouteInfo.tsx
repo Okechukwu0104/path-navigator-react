@@ -1,166 +1,157 @@
-
 import React from 'react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { ArrowRight, ArrowUp, ArrowDown, Navigation } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Bus, Car, PersonStanding } from 'lucide-react';
 
-interface Location {
-  lat: number;
-  lng: number;
-  address?: string;
-}
-
-interface RouteStep {
-  instruction: string;
-  distance: string;
-  duration: string;
-  coordinates: Location;
-  maneuver: string;
+interface TransportStep {
+  start: string;
+  stop: string;
+  price: string;
+  type_of_vehicle: string;
+  notes: string;
 }
 
 interface RouteInfoProps {
-  route: RouteStep[];
+  route: TransportStep[];
   currentStepIndex: number;
   isNavigating: boolean;
+  onNextStep: () => void;
+  onPrevStep: () => void;
 }
 
-const RouteInfo: React.FC<RouteInfoProps> = ({ route, currentStepIndex, isNavigating }) => {
-  const getManeuverIcon = (maneuver: string) => {
-    switch (maneuver) {
-      case 'turn-right':
-        return <ArrowRight className="h-4 w-4" />;
-      case 'turn-left':
-        return <ArrowDown className="h-4 w-4 rotate-90" />;
-      case 'straight':
-        return <ArrowUp className="h-4 w-4" />;
-      case 'arrive':
-        return <Navigation className="h-4 w-4" />;
+const RouteInfo: React.FC<RouteInfoProps> = ({ 
+  route, 
+  currentStepIndex, 
+  isNavigating,
+  onNextStep,
+  onPrevStep
+}) => {
+  const getTransportIcon = (type: string) => {
+    switch(type.toLowerCase()) {
+      case 'danfo':
+      case 'brt':
+      case 'bus':
+        return <Bus className="h-6 w-6" />;
+      case 'taxi':
+      case 'cab':
+        return <Car className="h-6 w-6" />;
       default:
-        return <ArrowUp className="h-4 w-4" />;
+        return <PersonStanding className="h-6 w-6" />;
     }
   };
 
-  const getTotalDistance = () => {
-    return route.reduce((total, step) => {
-      const distance = parseFloat(step.distance.replace(/[^\d.]/g, ''));
-      return total + distance;
-    }, 0).toFixed(1);
-  };
-
-  const getTotalDuration = () => {
-    let totalMinutes = 0;
-    route.forEach(step => {
-      const duration = step.duration;
-      if (duration.includes('min')) {
-        totalMinutes += parseInt(duration.replace(/[^\d]/g, ''));
-      } else if (duration.includes('sec')) {
-        totalMinutes += parseInt(duration.replace(/[^\d]/g, '')) / 60;
-      }
-    });
-    return Math.ceil(totalMinutes);
+  const getTotalCost = () => {
+    return route.reduce((total, step) => total + parseInt(step.price), 0);
   };
 
   if (route.length === 0) {
     return (
       <div className="p-4 text-center text-gray-500">
-        <Navigation className="h-12 w-12 mx-auto mb-3 text-gray-300" />
-        <h3 className="font-medium text-gray-900 mb-1">No route selected</h3>
-        <p className="text-sm">Enter a destination to get started</p>
+        <Bus className="h-12 w-12 mx-auto mb-3 text-gray-300" />
+        <h3 className="font-medium text-gray-900 mb-1">No transport route</h3>
+        <p className="text-sm">Enter a destination to see transport options</p>
       </div>
     );
   }
 
+  const currentStep = route[currentStepIndex];
+
   return (
     <div className="p-4 space-y-4">
-      {/* Route Summary */}
-      <Card className="p-3 bg-blue-50 border-blue-200">
-        <div className="flex items-center justify-between">
-          <div>
-            <div className="text-lg font-bold text-blue-900">{getTotalDistance()} mi</div>
-            <div className="text-sm text-blue-700">{getTotalDuration()} mins</div>
+      {/* Route Summary Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="font-bold text-lg">Transport Route</h3>
+          <div className="text-sm text-gray-500">
+            Step {currentStepIndex + 1} of {route.length}
           </div>
-          <div className="text-right">
-            <Badge variant="secondary" className="bg-blue-100 text-blue-800">
-              {route.length} steps
-            </Badge>
+        </div>
+        <Badge variant="secondary" className="bg-green-100 text-green-800">
+          ₦{getTotalCost()} total
+        </Badge>
+      </div>
+
+      {/* Transport Diagram */}
+      <Card className="p-4 bg-gray-50 border-gray-200">
+        <div className="flex flex-col items-center">
+          {/* Transport Icon */}
+          <div className="p-3 bg-blue-100 rounded-full mb-3">
+            {getTransportIcon(currentStep.type_of_vehicle)}
+          </div>
+          
+          {/* Route Line */}
+          <div className="relative w-full flex justify-center mb-3">
+            <div className="absolute h-12 w-px bg-gray-300"></div>
+            <div className="absolute h-6 w-px bg-blue-500" style={{ top: 0 }}></div>
+          </div>
+          
+          {/* Start and Stop Points */}
+          <div className="w-full flex justify-between px-4">
+            <div className="text-center">
+              <div className="text-sm font-medium">{currentStep.start}</div>
+            </div>
+            <div className="text-center">
+              <div className="text-sm font-medium">{currentStep.stop}</div>
+            </div>
           </div>
         </div>
       </Card>
 
-      {/* Current Step (if navigating) */}
-      {isNavigating && (
-        <Card className="p-4 bg-green-50 border-green-200">
-          <div className="flex items-start space-x-3">
-            <div className="p-2 bg-green-500 rounded-full text-white">
-              {getManeuverIcon(route[currentStepIndex]?.maneuver)}
-            </div>
-            <div className="flex-1">
-              <div className="font-medium text-green-900 mb-1">
-                Next: {route[currentStepIndex]?.instruction}
-              </div>
-              <div className="text-sm text-green-700">
-                In {route[currentStepIndex]?.distance} • {route[currentStepIndex]?.duration}
-              </div>
-            </div>
+      {/* Step Details */}
+      <Card className="p-4">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center space-x-2">
+            {getTransportIcon(currentStep.type_of_vehicle)}
+            <span className="font-medium capitalize">{currentStep.type_of_vehicle}</span>
           </div>
-        </Card>
-      )}
+          <Badge variant="default" className="bg-blue-500">
+            ₦{currentStep.price}
+          </Badge>
+        </div>
+        
+        <div className="text-sm text-gray-700 mb-4">
+          {currentStep.notes}
+        </div>
+        
+        <div className="text-xs text-gray-500">
+          Board at <span className="font-medium">{currentStep.start}</span> and alight at <span className="font-medium">{currentStep.stop}</span>
+        </div>
+      </Card>
 
-      {/* All Steps */}
-      <div className="space-y-2">
-        <h3 className="font-medium text-gray-900 mb-3">Turn-by-turn directions</h3>
-        {route.map((step, index) => (
-          <Card 
-            key={index} 
-            className={`p-3 transition-all ${
-              isNavigating && index === currentStepIndex 
-                ? 'bg-blue-50 border-blue-200 scale-105' 
-                : index < currentStepIndex && isNavigating
-                ? 'bg-gray-50 opacity-60'
-                : 'hover:bg-gray-50'
-            }`}
-          >
-            <div className="flex items-start space-x-3">
-              <div className={`p-1.5 rounded-full ${
-                isNavigating && index === currentStepIndex 
-                  ? 'bg-blue-500 text-white' 
-                  : index < currentStepIndex && isNavigating
-                  ? 'bg-green-500 text-white'
-                  : 'bg-gray-200 text-gray-600'
-              }`}>
-                {getManeuverIcon(step.maneuver)}
-              </div>
-              
-              <div className="flex-1 min-w-0">
-                <div className={`font-medium ${
-                  isNavigating && index === currentStepIndex 
-                    ? 'text-blue-900' 
-                    : 'text-gray-900'
-                }`}>
-                  {step.instruction}
-                </div>
-                <div className="flex items-center space-x-2 mt-1 text-sm text-gray-600">
-                  <span>{step.distance}</span>
-                  <span>•</span>
-                  <span>{step.duration}</span>
-                </div>
-              </div>
-
-              {isNavigating && index === currentStepIndex && (
-                <Badge variant="default" className="bg-blue-500">
-                  Current
-                </Badge>
-              )}
-              
-              {isNavigating && index < currentStepIndex && (
-                <Badge variant="secondary" className="bg-green-100 text-green-800">
-                  Done
-                </Badge>
-              )}
-            </div>
-          </Card>
-        ))}
+      {/* Navigation Controls */}
+      <div className="flex items-center justify-between">
+        <button
+          onClick={onPrevStep}
+          disabled={currentStepIndex === 0}
+          className={`p-2 rounded-full ${currentStepIndex === 0 ? 'text-gray-300' : 'text-gray-700 hover:bg-gray-100'}`}
+        >
+          <ChevronLeft className="h-6 w-6" />
+        </button>
+        
+        <div className="flex space-x-1">
+          {route.map((_, index) => (
+            <div 
+              key={index}
+              className={`h-2 w-2 rounded-full ${index === currentStepIndex ? 'bg-blue-500' : 'bg-gray-300'}`}
+            />
+          ))}
+        </div>
+        
+        <button
+          onClick={onNextStep}
+          disabled={currentStepIndex === route.length - 1}
+          className={`p-2 rounded-full ${currentStepIndex === route.length - 1 ? 'text-gray-300' : 'text-gray-700 hover:bg-gray-100'}`}
+        >
+          <ChevronRight className="h-6 w-6" />
+        </button>
       </div>
+
+      {/* Start Navigation Button */}
+      {!isNavigating && (
+        <button className="w-full py-3 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium">
+          Start Navigation
+        </button>
+      )}
     </div>
   );
 };
