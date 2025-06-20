@@ -76,7 +76,6 @@ const Index = () => {
   const locationWatchId = useRef<number | null>(null);
   const isLocationRequestInProgress = useRef(false);
 
-  // In your Index component, replace the useEffect with this improved version
   useEffect(() => {
     const getCurrentLocation = () => {
       if (!navigator.geolocation) {
@@ -195,9 +194,52 @@ const Index = () => {
     };
   }, [isNavigating, toast]);
 
+
+  useEffect(() => {
+    if (currentLocation && destination) {
+      const payload = [
+        {
+          "start-name": currentLocation.name || "",
+          "start-long": currentLocation.lng,
+          "start-lat": currentLocation.lat,
+          "stop-name": destination.name || "",
+          "stop-long": destination.lng,
+          "stop-lat": destination.lat,
+        },
+      ];
+
+      fetch("https://30109577-301c-455b-80d3-083726de2e83.mock.pstmn.io/newRouting", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      })
+        .then(res => {
+          if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+          return res.json();
+        })
+        .then((data) => {
+          setTransportSteps(data);
+          toast({
+            title: "Transport routes loaded",
+            description: "Found multiple route options",
+          });
+        })
+        .catch(error => {
+          console.log("Using mock transport data due to API error:", error);
+          setTransportSteps(mockResponse);
+          toast({
+            title: "Using offline transport data",
+            description: "Showing sample transport routes",
+            variant: "default",
+          });
+        });
+    }
+  }, [currentLocation, destination, toast]);
+
+
   const handleDestinationSelect = (location: Location) => {
     setDestination(location);
-    // Mock API response with the provided JSON
+    
     const mockResponse = [
       {
         start: "sabo market",
@@ -218,7 +260,7 @@ const Index = () => {
         vehicle: "keke",
         weather: "sunny",
         time: "6.2",
-        crowd: 2,
+        crowd: 0,
         start_long: 3.3729165,
         start_lat: 6.5098321,
         end_long: 3.3612458,
@@ -231,7 +273,7 @@ const Index = () => {
         vehicle: "keke",
         weather: "sunny",
         time: "7.8",
-        crowd: 3,
+        crowd: 1,
         start_long: 3.3612458,
         start_lat: 6.5183942,
         end_long: 3.3425871,
