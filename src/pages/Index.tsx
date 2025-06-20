@@ -455,8 +455,8 @@ const Index = () => {
                           }}
                         ></div>
                         <div className="flex justify-between">
-                          <MapPin className="h-6 w-6 text-blue-600" />
-                          <MapPin className="h-6 w-6 text-red-600" />
+                          <MapPin className="h-6 w-6 mb-9 1 text-blue-600" />
+                          <MapPin className="h-6 w-6 mb-9 text-red-600" />
                         </div>
                       </div>
                     </div>
