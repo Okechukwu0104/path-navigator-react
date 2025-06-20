@@ -194,7 +194,6 @@ const Index = () => {
     };
   }, [isNavigating, toast]);
 
-
   useEffect(() => {
     if (currentLocation && destination) {
       const payload = [
@@ -208,16 +207,19 @@ const Index = () => {
         },
       ];
 
-      fetch("https://30109577-301c-455b-80d3-083726de2e83.mock.pstmn.io/newRouting", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      })
+      fetch(
+        "https://30109577-301c-455b-80d3-083726de2e83.mock.pstmn.io/newRouting",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        }
+      )
         .then(res => {
           if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
           return res.json();
         })
-        .then((data) => {
+        .then(data => {
           setTransportSteps(data);
           toast({
             title: "Transport routes loaded",
@@ -226,6 +228,48 @@ const Index = () => {
         })
         .catch(error => {
           console.log("Using mock transport data due to API error:", error);
+
+          const mockResponse = [
+            {
+              start: "baba market",
+              end: "jibowu bus stop",
+              vehicle: "keke",
+              weather: "sunny",
+              time: "4.5",
+              crowd: 1,
+              start_long: 3.37800783,
+              start_lat: 6.50600558,
+              end_long: 3.3729165,
+              end_lat: 6.5098321,
+              price: "150",
+            },
+            {
+              start: "jibowu bus stop",
+              end: "obafemi awolowo way",
+              vehicle: "keke",
+              weather: "sunny",
+              time: "6.2",
+              crowd: 0,
+              start_long: 3.3729165,
+              start_lat: 6.5098321,
+              end_long: 3.3612458,
+              end_lat: 6.5183942,
+              price: "100",
+            },
+            {
+              start: "obafemi awolowo way",
+              end: "ikeja underbridge",
+              vehicle: "keke",
+              weather: "sunny",
+              time: "7.8",
+              crowd: 1,
+              start_long: 3.3612458,
+              start_lat: 6.5183942,
+              end_long: 3.3425871,
+              end_lat: 6.5965062,
+              price: "200",
+            },
+          ];
           setTransportSteps(mockResponse);
           toast({
             title: "Using offline transport data",
@@ -236,52 +280,9 @@ const Index = () => {
     }
   }, [currentLocation, destination, toast]);
 
-
   const handleDestinationSelect = (location: Location) => {
     setDestination(location);
-    
-    const mockResponse = [
-      {
-        start: "sabo market",
-        end: "jibowu bus stop",
-        vehicle: "keke",
-        weather: "sunny",
-        time: "4.5",
-        crowd: 1,
-        start_long: 3.37800783,
-        start_lat: 6.50600558,
-        end_long: 3.3729165,
-        end_lat: 6.5098321,
-        price: "150",
-      },
-      {
-        start: "jibowu bus stop",
-        end: "obafemi awolowo way",
-        vehicle: "keke",
-        weather: "sunny",
-        time: "6.2",
-        crowd: 0,
-        start_long: 3.3729165,
-        start_lat: 6.5098321,
-        end_long: 3.3612458,
-        end_lat: 6.5183942,
-        price: "100",
-      },
-      {
-        start: "obafemi awolowo way",
-        end: "ikeja underbridge",
-        vehicle: "keke",
-        weather: "sunny",
-        time: "7.8",
-        crowd: 1,
-        start_long: 3.3612458,
-        start_lat: 6.5183942,
-        end_long: 3.3425871,
-        end_lat: 6.5965062,
-        price: "200",
-      },
-    ];
-    setTransportSteps(mockResponse);
+
     setShowNavigationPanel(true);
   };
 
