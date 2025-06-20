@@ -7,6 +7,12 @@ import {
   Route,
   ChevronLeft,
   ChevronRight,
+  Users,
+  Sun,
+  Square,
+  Clock,
+  Currency,
+  Badge,
 } from "lucide-react";
 import SearchPanel from "@/components/SearchPanel";
 import MapComponent from "@/components/MapComponent";
@@ -359,130 +365,170 @@ const Index = () => {
               </div>
             </Card>
 
-            {/* Navigation Panel */}
             {showNavigationPanel && transportSteps.length > 0 && (
-              <Card className="absolute bottom-6 left-6 right-6 md:right-auto md:w-96 bg-white shadow-xl border-0 rounded-2xl overflow-hidden z-10">
-                <div className="p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-lg font-semibold text-gray-900">
-                      Transport Route
-                    </h3>
-                    <div className="flex items-center space-x-2">
-                      <span className="text-sm bg-green-100 text-green-800 px-2 py-1 rounded">
-                        ₦{getTotalCost()} total
-                      </span>
+              <Card className="absolute bottom-[10rem] left-[90rem] transform -translate-x-1/2 w-[36rem] bg-white shadow-xl border-0 rounded-3xl overflow-hidden z-10">
+                <div className="p-8">
+                  {/* Header - Larger */}
+                  <div className="flex items-center justify-between mb-6">
+                    <div className="flex items-center space-x-3">
+                      <Route className="h-6 w-6 text-blue-600" />
+                      <h3 className="text-xl font-semibold text-gray-900">
+                        Transport Route
+                      </h3>
+                    </div>
+                    <div className="flex items-center space-x-3">
+                      <Badge className="bg-green-100 text-green-800 text-base py-1.5 px-3">
+                        <Navigation className="h-4 w-4 mr-1.5" />₦
+                        {getTotalCost()} total
+                      </Badge>
                       <Button
                         variant="ghost"
                         size="sm"
                         onClick={() => setShowNavigationPanel(false)}
-                        className="h-8 w-8 p-0"
+                        className="h-10 w-10 p-0 text-gray-500 hover:text-gray-700 text-xl"
                       >
                         ×
                       </Button>
                     </div>
                   </div>
 
-                  {/* Current Step */}
-                  <div className="mb-6">
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center space-x-2">
-                        <span className="text-2xl">
+                  {/* Current Step - Larger */}
+                  <div className="mb-8">
+                    <div className="flex flex-col items-center mb-6">
+                      {/* Transport Icon - Larger */}
+                      <div className="p-4 bg-blue-100 rounded-full mb-4">
+                        <span className="text-4xl">
                           {getTransportIcon(
                             transportSteps[currentStepIndex].vehicle
                           )}
                         </span>
-                        <span className="font-medium capitalize">
+                      </div>
+
+                      {/* Route Visualization - Larger */}
+                      <div className="relative w-full max-w-md">
+                        <div className="absolute left-0 right-0 top-1/2 h-1 bg-gray-200 transform -translate-y-1/2"></div>
+                        <div
+                          className="absolute left-0 top-1/2 h-1 bg-blue-500 transform -translate-y-1/2"
+                          style={{
+                            width: `${
+                              ((currentStepIndex + 1) / transportSteps.length) *
+                              100
+                            }%`,
+                          }}
+                        ></div>
+                        <div className="flex justify-between">
+                          <MapPin className="h-6 w-6 text-blue-600" />
+                          <MapPin className="h-6 w-6 text-red-600" />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Step Details - Larger */}
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center space-x-4">
+                        <span className="text-2xl font-medium capitalize">
                           {transportSteps[currentStepIndex].vehicle}
                         </span>
+                        <Badge
+                          variant="secondary"
+                          className="text-lg py-1.5 px-3"
+                        >
+                          <Clock className="h-4 w-4 mr-1.5" />
+                          {transportSteps[currentStepIndex].time.replace(
+                            ".",
+                            ":"
+                          )}{" "}
+                          min
+                        </Badge>
                       </div>
-                      <span className="font-bold text-blue-600">
+                      <span className="text-2xl font-bold text-blue-600">
                         ₦{transportSteps[currentStepIndex].price}
                       </span>
                     </div>
 
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="text-sm font-medium">
+                    {/* Locations - Larger */}
+                    <div className="flex justify-between mb-6 px-4">
+                      <div className="text-base font-medium">
                         {transportSteps[currentStepIndex].start}
                       </div>
-                      <div className="text-sm text-gray-500">
-                        {transportSteps[currentStepIndex].time.replace(
-                          ".",
-                          ":"
-                        )}
-                      </div>
-                      <div className="text-sm font-medium">
+                      <div className="text-base font-medium">
                         {transportSteps[currentStepIndex].end}
                       </div>
                     </div>
-
-                    <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div
-                        className="bg-blue-500 h-2 rounded-full"
-                        style={{
-                          width: `${
-                            ((currentStepIndex + 1) / transportSteps.length) *
-                            100
-                          }%`,
-                        }}
-                      ></div>
-                    </div>
                   </div>
 
-                  {/* Step Navigation */}
-                  <div className="flex items-center justify-between mb-4">
+                  {/* Navigation Controls - Larger */}
+                  <div className="flex items-center justify-between mb-6">
                     <Button
                       variant="outline"
-                      size="sm"
                       onClick={prevStep}
                       disabled={currentStepIndex === 0}
+                      className="flex items-center h-12 px-5 text-base"
                     >
-                      <ChevronLeft className="h-4 w-4 mr-1" />
+                      <ChevronLeft className="h-5 w-5 mr-2" />
                       Previous
                     </Button>
 
-                    <div className="text-sm text-gray-500">
-                      Step {currentStepIndex + 1} of {transportSteps.length}
+                    <div className="flex space-x-3">
+                      {transportSteps.map((_, index) => (
+                        <div
+                          key={index}
+                          className={`h-3 w-3 rounded-full ${
+                            index === currentStepIndex
+                              ? "bg-blue-500"
+                              : "bg-gray-300"
+                          }`}
+                        />
+                      ))}
                     </div>
 
                     <Button
                       variant="outline"
-                      size="sm"
                       onClick={nextStep}
                       disabled={currentStepIndex === transportSteps.length - 1}
+                      className="flex items-center h-12 px-5 text-base"
                     >
                       Next
-                      <ChevronRight className="h-4 w-4 ml-1" />
+                      <ChevronRight className="h-5 w-5 ml-2" />
                     </Button>
                   </div>
 
-                  {/* Navigation Controls */}
+                  {/* Main Navigation Button - Larger */}
                   {!isNavigating ? (
                     <Button
                       onClick={startNavigation}
-                      className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-xl font-medium"
+                      className="w-full bg-blue-600 hover:bg-blue-700 text-white py-4 rounded-xl font-medium text-lg h-14"
                     >
+                      <Navigation className="h-6 w-6 mr-3" />
                       Start Navigation
                     </Button>
                   ) : (
                     <Button
                       onClick={stopNavigation}
                       variant="destructive"
-                      className="w-full bg-red-600 hover:bg-red-700 text-white py-3 rounded-xl font-medium"
+                      className="w-full bg-red-600 hover:bg-red-700 text-white py-4 rounded-xl font-medium text-lg h-14"
                     >
+                      <Square className="h-6 w-6 mr-3" />
                       Stop Navigation
                     </Button>
                   )}
 
-                  {/* Additional Info */}
-                  <div className="mt-4 text-sm text-gray-600">
-                    <div className="flex items-center justify-between mb-1">
-                      <span>Weather:</span>
+                  {/* Additional Info - Larger */}
+                  <div className="mt-6 text-base text-gray-600">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="flex items-center">
+                        <Sun className="h-4 w-4 mr-2" />
+                        Weather:
+                      </span>
                       <span className="capitalize">
                         {transportSteps[currentStepIndex].weather}
                       </span>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span>Crowd:</span>
+                      <span className="flex items-center">
+                        <Users className="h-4 w-4 mr-2" />
+                        Crowd:
+                      </span>
                       <span>
                         {transportSteps[currentStepIndex].crowd === 1
                           ? "Crowded"
