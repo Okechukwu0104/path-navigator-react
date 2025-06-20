@@ -196,19 +196,17 @@ const Index = () => {
 
   useEffect(() => {
     if (currentLocation && destination) {
-      const payload = [
-        {
+      const payload = {
           "startName": currentLocation.name || "",
           "startLong": currentLocation.lng,
           "startLat": currentLocation.lat,
           "stopName": destination.name || "",
           "stopLong": destination.lng,
           "stopLat": destination.lat,
-        },
-      ];
+        };
 
       fetch(
-        "https://30109577-301c-455b-80d3-083726de2e83.mock.pstmn.io/newRouting",
+        "https://9166d298-3e05-4c76-a645-4478df40a8e7.mock.pstmn.io/route",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -267,7 +265,7 @@ const Index = () => {
               start_lat: 6.5183942,
               end_long: 3.3425871,
               end_lat: 6.5965062,
-              price: "200",
+              price: "20000",
             },
           ];
           setTransportSteps(mockResponse);
