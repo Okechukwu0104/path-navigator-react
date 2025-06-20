@@ -198,12 +198,12 @@ const Index = () => {
     if (currentLocation && destination) {
       const payload = [
         {
-          "start-name": currentLocation.name || "",
-          "start-long": currentLocation.lng,
-          "start-lat": currentLocation.lat,
-          "stop-name": destination.name || "",
-          "stop-long": destination.lng,
-          "stop-lat": destination.lat,
+          "startName": currentLocation.name || "",
+          "startLong": currentLocation.lng,
+          "startLat": currentLocation.lat,
+          "stopName": destination.name || "",
+          "stopLong": destination.lng,
+          "stopLat": destination.lat,
         },
       ];
 
@@ -435,10 +435,8 @@ const Index = () => {
                     </div>
                   </div>
 
-                  {/* Current Step - Larger */}
                   <div className="mb-8">
                     <div className="flex flex-col items-center mb-6">
-                      {/* Transport Icon - Larger */}
                       <div className="p-4 bg-blue-100 rounded-full mb-4">
                         <span className="text-4xl">
                           {getTransportIcon(
@@ -447,7 +445,6 @@ const Index = () => {
                         </span>
                       </div>
 
-                      {/* Route Visualization - Larger */}
                       <div className="relative w-full max-w-md">
                         <div className="absolute left-0 right-0 top-1/2 h-1 bg-gray-200 transform -translate-y-1/2"></div>
                         <div
@@ -466,7 +463,6 @@ const Index = () => {
                       </div>
                     </div>
 
-                    {/* Step Details - Larger */}
                     <div className="flex items-center justify-between mb-4">
                       <div className="flex items-center space-x-4">
                         <span className="text-2xl font-medium capitalize">
@@ -489,7 +485,6 @@ const Index = () => {
                       </span>
                     </div>
 
-                    {/* Locations - Larger */}
                     <div className="flex justify-between mb-6 px-4">
                       <div className="text-base font-medium">
                         {transportSteps[currentStepIndex].start}
@@ -500,7 +495,6 @@ const Index = () => {
                     </div>
                   </div>
 
-                  {/* Navigation Controls - Larger */}
                   <div className="flex items-center justify-between mb-6">
                     <Button
                       variant="outline"
@@ -536,7 +530,6 @@ const Index = () => {
                     </Button>
                   </div>
 
-                  {/* Main Navigation Button - Larger */}
                   {!isNavigating ? (
                     <Button
                       onClick={startNavigation}
@@ -556,7 +549,6 @@ const Index = () => {
                     </Button>
                   )}
 
-                  {/* Additional Info - Larger */}
                   <div className="mt-6 text-base text-gray-600">
                     <div className="flex items-center justify-between mb-2">
                       <span className="flex items-center">
@@ -583,7 +575,6 @@ const Index = () => {
               </Card>
             )}
 
-            {/* Current Location Info */}
             {currentLocation && (
               <Card className="absolute top-16 right-6 p-3 bg-white/95 backdrop-blur-sm shadow-lg border-0 rounded-2xl z-10">
                 <div className="flex items-center space-x-3 text-sm">
